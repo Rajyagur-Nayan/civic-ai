@@ -1,46 +1,56 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import ResultCard from '@/components/ResultCard';
 import DashboardStats from '@/components/DashboardStats';
-import { PotholeDetection, DetectionResponse } from '@/services/api';
+import { DetectionResult, DetectionResponse } from '@/services/api';
 
 interface ResultData extends DetectionResponse {
   imageUrl: string;
 }
 
-function getInitialResult(): ResultData | null {
-  if (typeof window === 'undefined') return null;
-  const stored = sessionStorage.getItem('detectionResult');
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 export default function ResultsPage() {
   const router = useRouter();
-  const result = useMemo(() => getInitialResult(), []);
+  const [result, setResult] = useState<ResultData | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
-  if (!result) {
-    if (typeof window !== 'undefined') {
+  useEffect(() => {
+    setMounted(true);
+    const stored = sessionStorage.getItem('detectionResult');
+    if (stored) {
+      try {
+        setResult(JSON.parse(stored));
+      } catch (err) {
+        console.error('Failed to parse detection result', err);
+        router.push('/upload');
+      }
+    } else {
       router.push('/upload');
     }
-    return null;
+  }, [router]);
+
+  if (!mounted || !result) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+      </div>
+    );
   }
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+  };
+
+  const severityColorMap = {
+    small: 'border-green-500',
+    medium: 'border-yellow-500',
+    large: 'border-red-500',
   };
 
   return (
@@ -136,34 +146,29 @@ export default function ResultsPage() {
                       onLoad={handleImageLoad}
                       className="w-full rounded-xl"
                     />
-                    {imageSize.width > 0 && result.detections.map((detection: PotholeDetection) => {
-                      const xMin = (detection.x_min / 100) * imageSize.width;
-                      const yMin = (detection.y_min / 100) * imageSize.height;
-                      const width = ((detection.x_max - detection.x_min) / 100) * imageSize.width;
-                      const height = ((detection.y_max - detection.y_min) / 100) * imageSize.height;
-                      
-                      const severityColor = {
-                        low: 'border-green-500',
-                        medium: 'border-yellow-500',
-                        high: 'border-red-500',
-                      };
+                    {imageSize.width > 0 && result.detections.map((detection: DetectionResult, idx: number) => {
+                      const bbox = detection.bbox;
+                      const xMin = (bbox[0] / 100) * imageSize.width;
+                      const yMin = (bbox[1] / 100) * imageSize.height;
+                      const width = ((bbox[2] - bbox[0]) / 100) * imageSize.width;
+                      const height = ((bbox[3] - bbox[1]) / 100) * imageSize.height;
 
                       return (
                         <div
-                          key={detection.pothole_id}
-                          className={`absolute border-2 ${severityColor[detection.severity]} rounded-sm`}
+                          key={idx}
+                          className={`absolute border-2 ${severityColorMap[detection.severity]} rounded-sm`}
                           style={{
                             left: xMin,
                             top: yMin,
-                            width: width,
-                            height: height,
+                            width: width || 1,
+                            height: height || 1,
                           }}
                         >
                           <div className={`absolute -top-6 left-0 px-2 py-0.5 rounded text-xs font-medium ${
-                            detection.severity === 'low' ? 'bg-green-500' :
+                            detection.severity === 'small' ? 'bg-green-500' :
                             detection.severity === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
                           } text-black`}>
-                            #{detection.pothole_id}
+                            #{idx + 1}
                           </div>
                         </div>
                       );
@@ -190,7 +195,7 @@ export default function ResultsPage() {
                     </div>
                   ) : (
                     result.detections.map((detection, index) => (
-                      <ResultCard key={detection.pothole_id} detection={detection} index={index} />
+                      <ResultCard key={index} detection={detection} index={index} />
                     ))
                   )}
                 </div>
@@ -205,7 +210,7 @@ export default function ResultsPage() {
             >
               <div className="rounded-2xl p-6 bg-white/5 border border-white/10">
                 <h2 className="text-lg font-semibold text-white mb-4">Raw API Response</h2>
-                <pre className="bg-black/50 rounded-xl p-4 text-sm text-cyan-400 overflow-x-auto">
+                <pre className="bg-black/50 rounded-xl p-4 text-sm text-cyan-400 overflow-x-auto max-h-96">
                   {JSON.stringify(result, null, 2)}
                 </pre>
               </div>

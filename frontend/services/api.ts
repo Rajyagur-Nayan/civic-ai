@@ -2,29 +2,26 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000';
 
-export interface PotholeDetection {
-  pothole_id: number;
-  x_min: number;
-  y_min: number;
-  x_max: number;
-  y_max: number;
-  confidence: number;
+export interface DetectionResult {
+  bbox: number[];
   area: number;
-  severity: 'low' | 'medium' | 'high';
-  estimated_cost: number;
-  workers_needed: number;
+  severity: 'small' | 'medium' | 'large';
+  workers: number;
+  cost: number;
+  time: number;
+  confidence: number;
 }
 
 export interface DetectionResponse {
-  image_url: string;
-  detections: PotholeDetection[];
+  detections: DetectionResult[];
   total_potholes: number;
   total_cost: number;
   severity_distribution: {
-    low: number;
+    small: number;
     medium: number;
-    high: number;
+    large: number;
   };
+  image_url?: string;
 }
 
 export const detectPotholes = async (file: File): Promise<DetectionResponse> => {

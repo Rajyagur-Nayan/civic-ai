@@ -1,27 +1,29 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { PotholeDetection } from '@/services/api';
-import { AlertTriangle, Ruler, DollarSign, Users } from 'lucide-react';
+import { DetectionResult } from '@/services/api';
+import { AlertTriangle, Ruler, DollarSign, Users, Clock } from 'lucide-react';
 
 interface ResultCardProps {
-  detection: PotholeDetection;
+  detection: DetectionResult;
   index: number;
 }
 
 const severityColors = {
-  low: 'from-green-500/20 to-green-500/5 border-green-500/30',
+  small: 'from-green-500/20 to-green-500/5 border-green-500/30',
   medium: 'from-yellow-500/20 to-yellow-500/5 border-yellow-500/30',
-  high: 'from-red-500/20 to-red-500/5 border-red-500/30',
+  large: 'from-red-500/20 to-red-500/5 border-red-500/30',
 };
 
 const severityBadges = {
-  low: 'bg-green-500/20 text-green-400',
+  small: 'bg-green-500/20 text-green-400',
   medium: 'bg-yellow-500/20 text-yellow-400',
-  high: 'bg-red-500/20 text-red-400',
+  large: 'bg-red-500/20 text-red-400',
 };
 
 export default function ResultCard({ detection, index }: ResultCardProps) {
+  const bbox = detection.bbox;
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -35,7 +37,7 @@ export default function ResultCard({ detection, index }: ResultCardProps) {
             {detection.severity.toUpperCase()}
           </div>
           <span className="text-white/40 text-sm">
-            #{detection.pothole_id}
+            #{index + 1}
           </span>
         </div>
         <div className="flex items-center gap-1 text-white/60 text-sm">
@@ -61,7 +63,7 @@ export default function ResultCard({ detection, index }: ResultCardProps) {
           </div>
           <div>
             <p className="text-white/40 text-xs">Est. Cost</p>
-            <p className="text-white font-semibold">${detection.estimated_cost.toFixed(2)}</p>
+            <p className="text-white font-semibold">${detection.cost.toFixed(2)}</p>
           </div>
         </div>
 
@@ -71,21 +73,17 @@ export default function ResultCard({ detection, index }: ResultCardProps) {
           </div>
           <div>
             <p className="text-white/40 text-xs">Workers</p>
-            <p className="text-white font-semibold">{detection.workers_needed}</p>
+            <p className="text-white font-semibold">{detection.workers}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-            <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <Clock className="w-5 h-5 text-orange-400" />
           </div>
           <div>
-            <p className="text-white/40 text-xs">Coordinates</p>
-            <p className="text-white font-semibold text-xs">
-              ({detection.x_min}, {detection.y_min})
-            </p>
+            <p className="text-white/40 text-xs">Time</p>
+            <p className="text-white font-semibold">{detection.time} hrs</p>
           </div>
         </div>
       </div>

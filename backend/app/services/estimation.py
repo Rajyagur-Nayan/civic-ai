@@ -3,25 +3,33 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
-COST_PER_SQM = {"small": 150.0, "medium": 120.0, "large": 100.0}
+# Realistic labor and material costs
+COST_PER_M2 = 100.0
 
-WORKERS = {"small": 1, "medium": 2, "large": 4}
-
-TIME_HOURS = {"small": 2, "medium": 4, "large": 8}
-
+# Tiered requirements based on severity
+REQUIREMENTS = {
+    "small": {"workers": 1, "time": 2},
+    "medium": {"workers": 2, "time": 4},
+    "large": {"workers": 4, "time": 8}
+}
 
 def estimate_repair(area: float, severity: str) -> Dict[str, Any]:
-    cost_per_sqm = COST_PER_SQM.get(severity, 100.0)
-    estimated_cost = area * cost_per_sqm
+    """
+    Estimate resources needed for repair.
+    Cost = area * 100
+    Labor/Time based on severity tier.
+    """
+    # Flat cost calculation
+    estimated_cost = area * COST_PER_M2
 
-    workers_needed = WORKERS.get(severity, 2)
-    repair_time = TIME_HOURS.get(severity, 4)
-
+    # Get tiered requirements
+    req = REQUIREMENTS.get(severity, REQUIREMENTS["medium"])
+    
     result = {
-        "workers": workers_needed,
+        "workers": req["workers"],
         "cost": round(estimated_cost, 2),
-        "time": repair_time,
+        "time": req["time"],
     }
 
-    logger.info(f"Estimation: {result}")
+    logger.info(f"Estimation ({severity}): Cost=${estimated_cost:.2f}, Workers={req['workers']}, Time={req['time']}h")
     return result

@@ -7,18 +7,21 @@ interface DashboardStatsProps {
   totalPotholes: number;
   totalCost: number;
   severityDistribution: {
-    low: number;
+    small: number;
     medium: number;
-    high: number;
+    large: number;
   };
 }
 
 export default function DashboardStats({
-  totalPotholes,
-  totalCost,
-  severityDistribution,
+  totalPotholes = 0,
+  totalCost = 0,
+  severityDistribution = { small: 0, medium: 0, large: 0 },
 }: DashboardStatsProps) {
-  const total = severityDistribution.low + severityDistribution.medium + severityDistribution.high;
+  // Defensive check for missing severityDistribution
+  const safeDist = severityDistribution || { small: 0, medium: 0, large: 0 };
+  const total = (safeDist.small || 0) + (safeDist.medium || 0) + (safeDist.large || 0);
+  const safeTotal = total || 1;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -68,21 +71,21 @@ export default function DashboardStats({
           </div>
           <div>
             <p className="text-white/60 text-sm">Severity Distribution</p>
-            <p className="text-3xl font-bold text-white">100%</p>
+            <p className="text-3xl font-bold text-white">{total} total</p>
           </div>
         </div>
         <div className="flex gap-2 mt-2">
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-green-500" style={{ width: `${(severityDistribution.low / total) * 100}%` }} />
-            <p className="text-xs text-white/40 mt-1">Low ({severityDistribution.low})</p>
+            <div className="h-2 rounded-full bg-green-500" style={{ width: `${((safeDist.small || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
+            <p className="text-xs text-white/40 mt-1">Small ({safeDist.small || 0})</p>
           </div>
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-yellow-500" style={{ width: `${(severityDistribution.medium / total) * 100}%` }} />
-            <p className="text-xs text-white/40 mt-1">Med ({severityDistribution.medium})</p>
+            <div className="h-2 rounded-full bg-yellow-500" style={{ width: `${((safeDist.medium || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
+            <p className="text-xs text-white/40 mt-1">Med ({safeDist.medium || 0})</p>
           </div>
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-red-500" style={{ width: `${(severityDistribution.high / total) * 100}%` }} />
-            <p className="text-xs text-white/40 mt-1">High ({severityDistribution.high})</p>
+            <div className="h-2 rounded-full bg-red-500" style={{ width: `${((safeDist.large || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
+            <p className="text-xs text-white/40 mt-1">Large ({safeDist.large || 0})</p>
           </div>
         </div>
       </motion.div>

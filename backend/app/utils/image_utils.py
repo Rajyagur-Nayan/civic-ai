@@ -48,8 +48,7 @@ def save_annotated_image(
 
     logger.info(f"Saved annotated image to {output_path}")
     return output_path
-
-
+    
 def load_image_from_bytes(image_bytes: bytes) -> np.ndarray:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     return np.array(image)
