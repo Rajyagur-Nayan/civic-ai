@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2, Video } from 'lucide-react';
 
 interface UploadBoxProps {
   onUpload: (file: File) => void;
@@ -16,13 +16,18 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
+    if (!file) return;
+    
+    setSelectedFile(file);
+    if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+    } else if (file.type.startsWith('video/')) {
+      // For video, we just show a video icon or a temporary preview if possible
+      setPreview('video-file'); 
     }
   };
 
@@ -79,12 +84,19 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
             exit={{ opacity: 0, scale: 0.9 }}
             className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-white/5 to-white/10 border border-white/10"
           >
-            <div className="aspect-video relative">
-              <img
-                src={preview}
-                alt="Preview"
-                className="w-full h-full object-contain"
-              />
+            <div className="aspect-video relative flex items-center justify-center bg-black/40">
+              {preview === 'video-file' ? (
+                <div className="flex flex-col items-center gap-4">
+                  <Video className="w-16 h-16 text-cyan-400" />
+                  <span className="text-white/70 font-medium">{selectedFile?.name}</span>
+                </div>
+              ) : (
+                <img
+                  src={preview!}
+                  alt="Preview"
+                  className="w-full h-full object-contain"
+                />
+              )}
               <button
                 onClick={handleRemove}
                 className="absolute top-4 right-4 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
@@ -103,7 +115,7 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Analyzing...
+                    {selectedFile?.type.startsWith('video/') ? 'Deep Video Analysis...' : 'Analyzing Image...'}
                   </>
                 ) : (
                   <>
@@ -135,7 +147,7 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
               <input
                 ref={inputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleChange}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
@@ -151,10 +163,10 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
                   <ImageIcon className="w-8 h-8 text-cyan-400" />
                 </motion.div>
                 <h3 className="text-xl font-semibold text-white mb-2">
-                  Drop your road image here
+                  Drop road image or video here
                 </h3>
                 <p className="text-white/50 text-center max-w-md">
-                  or click to browse. We support JPG, PNG, and other common image formats.
+                  or click to browse. We support images and MP4, MOV videos.
                 </p>
               </div>
             </div>

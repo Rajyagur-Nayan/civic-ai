@@ -49,12 +49,37 @@ def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
         raise ValueError("Invalid image format")
     return img
 
-def detect_potholes(image_bytes: bytes) -> List[Dict[str, Any]]:
+def preprocess_image(img_cv2: np.ndarray) -> np.ndarray:
     """
-    Advanced detection pipeline with strict filtering.
-    1. Confidence >= 0.4 
-    2. Aspect Ratio (skip if too flat or too narrow)
-    3. Brightness (skip if ROI is too bright - likely not a hole)
+    Enhance image for better detection.
+    1. CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    2. Sharpening
+    """
+    # 1. CLAHE (apply to L channel in LAB color space)
+    lab = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2LAB)
+    l_channel, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    cl = clahe.apply(l_channel)
+    limg = cv2.merge((cl, a, b))
+    enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+
+    # 2. Sharpening
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    sharpened = cv2.filter2D(enhanced_img, -1, kernel)
+    
+    return sharpened
+
+def detect_potholes(
+    image_bytes: bytes, 
+    imgsz: int = 1280, 
+    augment: bool = True
+) -> List[Dict[str, Any]]:
+    """
+    Advanced detection pipeline with accuracy upgrades.
+    1. Configurable resolution (default 1280)
+    2. Configurable TTA (default True)
+    3. Lowered confidence threshold (0.25)
+    4. Enhanced image preprocessing (CLAHE + Sharpening)
     """
     if not image_bytes:
         return []
@@ -62,15 +87,25 @@ def detect_potholes(image_bytes: bytes) -> List[Dict[str, Any]]:
     try:
         model = get_model()
         
-        # Convert bytes to OpenCV image for filtering
+        # Convert bytes to OpenCV image
         img_cv2 = bytes_to_cv2(image_bytes)
-        img_gray = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2GRAY)
+        
+        # Perform Preprocessing for better recall
+        processed_img = preprocess_image(img_cv2)
+        img_gray = cv2.cvtColor(processed_img, cv2.COLOR_BGR2GRAY)
         
         # PIL for YOLO inference (preferred by Ultralytics)
-        img_pil = Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
+        img_pil = Image.fromarray(cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB))
         
-        # Run inference with higher confidence threshold
-        results = model.predict(source=img_pil, conf=0.4, verbose=False)
+        # Run inference with optimized parameters
+        results = model.predict(
+            source=img_pil, 
+            conf=0.25,      # Lower threshold for more detections
+            iou=0.45,       # Adjusted NMS IoU
+            imgsz=imgsz,    # Parameterized resolution
+            augment=augment, # Parameterized TTA
+            verbose=False
+        )
         
         detections = []
         if not results:
@@ -89,23 +124,22 @@ def detect_potholes(image_bytes: bytes) -> List[Dict[str, Any]]:
             w = x2 - x1
             h = y2 - y1
 
-            # 2. Aspect Ratio Filter (Reject flat/narrow shapes)
+            # 2. Lenient Aspect Ratio Filter (Reject extreme outliers only)
             if w <= 0 or h <= 0: continue
             aspect_ratio = w / h
-            if aspect_ratio > 3 or aspect_ratio < 0.33: # 0.33 is 1/3
-                logger.info(f"Skipping detection: Aspect Ratio {aspect_ratio:.2f} too extreme")
+            if aspect_ratio > 4 or aspect_ratio < 0.25:
+                # logger.info(f"Skipping detection: Aspect Ratio {aspect_ratio:.2f} too extreme")
                 continue
 
-            # 3. Brightness Filter (Potholes are usually dark/shadowed)
-            # Clip ROI to image boundaries
+            # 3. Lenient Brightness Filter (Potholes are usually shadowed)
             rx1, ry1 = max(0, x1), max(0, y1)
             rx2, ry2 = min(width_orig, x2), min(height_orig, y2)
             roi = img_gray[ry1:ry2, rx1:rx2]
             
-            if roi.size > 0:
+            if roi.size > 10:
                 mean_brightness = np.mean(roi)
-                if mean_brightness > 140:
-                    logger.info(f"Skipping detection: Mean brightness {mean_brightness:.1f} too high")
+                if mean_brightness > 180: # Increased threshold from 140
+                    # logger.info(f"Skipping detection: Mean brightness {mean_brightness:.1f} too high")
                     continue
 
             # 4. Valid detection confirmed

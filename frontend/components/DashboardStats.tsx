@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import { AlertTriangle, DollarSign, BarChart3 } from 'lucide-react';
+import { motion } from "framer-motion";
+import { AlertTriangle, DollarSign, BarChart3 } from "lucide-react";
 
 interface DashboardStatsProps {
   totalPotholes: number;
@@ -20,7 +20,8 @@ export default function DashboardStats({
 }: DashboardStatsProps) {
   // Defensive check for missing severityDistribution
   const safeDist = severityDistribution || { small: 0, medium: 0, large: 0 };
-  const total = (safeDist.small || 0) + (safeDist.medium || 0) + (safeDist.large || 0);
+  const total =
+    (safeDist.small || 0) + (safeDist.medium || 0) + (safeDist.large || 0);
   const safeTotal = total || 1;
 
   return (
@@ -54,7 +55,9 @@ export default function DashboardStats({
           </div>
           <div>
             <p className="text-white/60 text-sm">Total Estimated Cost</p>
-            <p className="text-3xl font-bold text-white">${totalCost.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-white">
+              ₹{totalCost.toFixed(2)}
+            </p>
           </div>
         </div>
       </motion.div>
@@ -76,16 +79,40 @@ export default function DashboardStats({
         </div>
         <div className="flex gap-2 mt-2">
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-green-500" style={{ width: `${((safeDist.small || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
-            <p className="text-xs text-white/40 mt-1">Small ({safeDist.small || 0})</p>
+            <div
+              className="h-2 rounded-full bg-green-500"
+              style={{
+                width: `${((safeDist.small || 0) / safeTotal) * 100}%`,
+                maxWidth: "100%",
+              }}
+            />
+            <p className="text-xs text-white/40 mt-1">
+              Small ({safeDist.small || 0})
+            </p>
           </div>
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-yellow-500" style={{ width: `${((safeDist.medium || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
-            <p className="text-xs text-white/40 mt-1">Med ({safeDist.medium || 0})</p>
+            <div
+              className="h-2 rounded-full bg-yellow-500"
+              style={{
+                width: `${((safeDist.medium || 0) / safeTotal) * 100}%`,
+                maxWidth: "100%",
+              }}
+            />
+            <p className="text-xs text-white/40 mt-1">
+              Med ({safeDist.medium || 0})
+            </p>
           </div>
           <div className="flex-1">
-            <div className="h-2 rounded-full bg-red-500" style={{ width: `${((safeDist.large || 0) / safeTotal) * 100}%`, maxWidth: '100%' }} />
-            <p className="text-xs text-white/40 mt-1">Large ({safeDist.large || 0})</p>
+            <div
+              className="h-2 rounded-full bg-red-500"
+              style={{
+                width: `${((safeDist.large || 0) / safeTotal) * 100}%`,
+                maxWidth: "100%",
+              }}
+            />
+            <p className="text-xs text-white/40 mt-1">
+              Large ({safeDist.large || 0})
+            </p>
           </div>
         </div>
       </motion.div>

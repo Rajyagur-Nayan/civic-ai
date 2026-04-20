@@ -3,7 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import detect
+from app.routes import detect, video
+from fastapi.staticfiles import StaticFiles
+import os
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -11,9 +13,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+from pathlib import Path
+
+# Base directory (backend root)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Civ-AI Backend starting up...")
+    
+    # Initialize base infrastructure directories
+    directories = [
+        BASE_DIR / "uploads",
+        BASE_DIR / "output",
+        BASE_DIR / "temp"
+    ]
+    
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Ensured directory exists: {directory}")
+        
     yield
     logger.info("Civ-AI Backend shutting down...")
 
@@ -34,6 +53,14 @@ app.add_middleware(
 )
 
 app.include_router(detect.router, prefix="/detect", tags=["Detection"])
+app.include_router(video.router, prefix="/detect/video", tags=["Video Detection"])
+
+# Mount static files for job results and artifacts
+UPLOADS_DIR = BASE_DIR / "uploads"
+OUTPUT_DIR = BASE_DIR / "output"
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
 
 @app.get("/")

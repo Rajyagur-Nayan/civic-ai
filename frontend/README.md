@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Civ-AI Frontend: Smart Road Intelligence Dashboard
 
-## Getting Started
+This is the frontend for the **Civ-AI** system, a modern, glassmorphic dashboard built with Next.js to visualize road infrastructure intelligence.
 
-First, run the development server:
+## 🚀 Features
 
+- **Pothole Analysis Dashboard**: real-time visualization of detection results.
+- **Unified Media Upload**: Seamlessly upload images and videos for processing.
+- **Interactive Reports**: Downloadable PDF reports with repair estimations.
+- **Dark Mode UI**: Professional fintech-inspired aesthetic with Framer Motion animations.
+
+## 🛠 Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
+- **API Client**: Axios
+- **State Management**: React Hooks
+
+## 🏁 Getting Started
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment
+Ensure the backend is running at `http://localhost:8000`. You can configure the API base URL in `services/api.ts`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run Development Server
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the dashboard.
 
-## Learn More
+## 📁 Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `app/`: Next.js App Router pages and layouts.
+- `components/`: UI components (Cards, Stats, Uploaders).
+- `services/`: API integration services.
+- `public/`: Static assets and icons.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📖 Learn More
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To learn more about the Civ-AI backend and the underlying YOLOv8 model, refer to the root [README](../README.md).
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

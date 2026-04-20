@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Download, FileText } from 'lucide-react';
+import { getFullReportUrl } from '@/services/api';
 import ResultCard from '@/components/ResultCard';
 import DashboardStats from '@/components/DashboardStats';
 import { DetectionResult, DetectionResponse } from '@/services/api';
 
 interface ResultData extends DetectionResponse {
-  imageUrl: string;
+  imageUrl: string | null;
+  report_url?: string;
 }
 
 export default function ResultsPage() {
@@ -115,10 +117,23 @@ export default function ResultsPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="mb-12"
             >
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                   Detection Results
                 </span>
+                {result.report_url && (
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    href={getFullReportUrl(result.report_url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold shadow-lg shadow-cyan-500/20"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download PDF Report
+                  </motion.a>
+                )}
               </h1>
             </motion.div>
 
@@ -136,43 +151,53 @@ export default function ResultsPage() {
                 className="rounded-2xl overflow-hidden bg-white/5 border border-white/10"
               >
                 <div className="p-4 border-b border-white/10">
-                  <h2 className="text-lg font-semibold text-white">Analyzed Image</h2>
+                  <h2 className="text-lg font-semibold text-white">Analyzed Data</h2>
                 </div>
                 <div className="relative p-4">
                   <div className="relative">
-                    <img
-                      src={result.imageUrl}
-                      alt="Analyzed road"
-                      onLoad={handleImageLoad}
-                      className="w-full rounded-xl"
-                    />
-                    {imageSize.width > 0 && result.detections.map((detection: DetectionResult, idx: number) => {
-                      const bbox = detection.bbox;
-                      const xMin = (bbox[0] / 100) * imageSize.width;
-                      const yMin = (bbox[1] / 100) * imageSize.height;
-                      const width = ((bbox[2] - bbox[0]) / 100) * imageSize.width;
-                      const height = ((bbox[3] - bbox[1]) / 100) * imageSize.height;
+                    {result.imageUrl ? (
+                      <>
+                        <img
+                          src={result.imageUrl}
+                          alt="Analyzed road"
+                          onLoad={handleImageLoad}
+                          className="w-full rounded-xl"
+                        />
+                        {imageSize.width > 0 && result.detections?.map((detection: DetectionResult, idx: number) => {
+                          const bbox = detection.bbox;
+                          const xMin = (bbox[0] / 100) * imageSize.width;
+                          const yMin = (bbox[1] / 100) * imageSize.height;
+                          const width = ((bbox[2] - bbox[0]) / 100) * imageSize.width;
+                          const height = ((bbox[3] - bbox[1]) / 100) * imageSize.height;
 
-                      return (
-                        <div
-                          key={idx}
-                          className={`absolute border-2 ${severityColorMap[detection.severity]} rounded-sm`}
-                          style={{
-                            left: xMin,
-                            top: yMin,
-                            width: width || 1,
-                            height: height || 1,
-                          }}
-                        >
-                          <div className={`absolute -top-6 left-0 px-2 py-0.5 rounded text-xs font-medium ${
-                            detection.severity === 'small' ? 'bg-green-500' :
-                            detection.severity === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
-                          } text-black`}>
-                            #{idx + 1}
-                          </div>
-                        </div>
-                      );
-                    })}
+                          return (
+                            <div
+                              key={idx}
+                              className={`absolute border-2 ${severityColorMap[detection.severity]} rounded-sm`}
+                              style={{
+                                left: xMin,
+                                top: yMin,
+                                width: width || 1,
+                                height: height || 1,
+                              }}
+                            >
+                              <div className={`absolute -top-6 left-0 px-2 py-0.5 rounded text-xs font-medium ${
+                                detection.severity === 'small' ? 'bg-green-500' :
+                                detection.severity === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
+                              } text-black`}>
+                                #{idx + 1}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    ) : (
+                      <div className="aspect-video flex flex-col items-center justify-center bg-white/5 rounded-xl border border-white/10 text-white/40">
+                        <FileText className="w-16 h-16 mb-4" />
+                        <p className="text-lg font-medium">Video Analysis Complete</p>
+                        <p className="text-sm mt-2">Download the PDF report for visual evidence</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -185,16 +210,16 @@ export default function ResultsPage() {
               >
                 <div className="p-4 border-b border-white/10">
                   <h2 className="text-lg font-semibold text-white">Detected Potholes</h2>
-                  <p className="text-white/50 text-sm">{result.detections.length} potholes detected</p>
+                  <p className="text-white/50 text-sm">{(result.detections?.length || 0)} potholes detected</p>
                 </div>
                 <div className="p-4 max-h-[600px] overflow-y-auto space-y-4">
-                  {result.detections.length === 0 ? (
+                  {(!result.detections || result.detections.length === 0) ? (
                     <div className="flex flex-col items-center justify-center py-12 text-white/40">
                       <AlertCircle className="w-12 h-12 mb-4" />
                       <p>No potholes detected in this image.</p>
                     </div>
                   ) : (
-                    result.detections.map((detection, index) => (
+                    result.detections?.map((detection, index) => (
                       <ResultCard key={index} detection={detection} index={index} />
                     ))
                   )}

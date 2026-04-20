@@ -22,6 +22,18 @@ export interface DetectionResponse {
     large: number;
   };
   image_url?: string;
+  report_url?: string;
+}
+
+export interface VideoDetectionResponse {
+  total_potholes: number;
+  total_cost: number;
+  severity_distribution: {
+    small: number;
+    medium: number;
+    large: number;
+  };
+  report_url: string;
 }
 
 export const detectPotholes = async (file: File): Promise<DetectionResponse> => {
@@ -40,7 +52,28 @@ export const detectPotholes = async (file: File): Promise<DetectionResponse> => 
 
   return response.data;
 };
+export const detectVideo = async (file: File): Promise<VideoDetectionResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axios.post<VideoDetectionResponse>(
+    `${API_BASE_URL}/detect/video`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 600000, // 10 minutes for video processing (increased for deep analysis)
+    }
+  );
+
+  return response.data;
+};
 
 export const createImageUrl = (file: File): string => {
   return URL.createObjectURL(file);
+};
+
+export const getFullReportUrl = (reportPath: string): string => {
+  return `${API_BASE_URL}${reportPath}`;
 };

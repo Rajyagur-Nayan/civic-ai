@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import UploadBox from '@/components/UploadBox';
-import { detectPotholes, createImageUrl, DetectionResponse } from '@/services/api';
+import { detectPotholes, detectVideo, createImageUrl, DetectionResponse } from '@/services/api';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -17,18 +17,29 @@ export default function UploadPage() {
     setError(null);
 
     try {
-      const imageUrl = createImageUrl(file);
-      const response = await detectPotholes(file);
+      let response;
+      let imageUrl: string | null = null;
       
-      const resultData: DetectionResponse & { imageUrl: string } = {
+      if (file.type.startsWith('video/')) {
+        response = await detectVideo(file);
+      } else {
+        imageUrl = createImageUrl(file);
+        response = await detectPotholes(file);
+      }
+      
+      const resultData = {
         ...response,
         imageUrl,
       };
       
       sessionStorage.setItem('detectionResult', JSON.stringify(resultData));
       router.push('/results');
-    } catch (err) {
-      setError('Failed to analyze image. Please try again.');
+    } catch (err: any) {
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError('Analysis timed out. Please try with a shorter video or a high-quality image.');
+      } else {
+        setError('Failed to analyze the file. Please try again.');
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -84,11 +95,11 @@ export default function UploadPage() {
             >
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  Upload Road Image
+                  Analyze Road Infrastructure
                 </span>
               </h1>
               <p className="text-white/60 text-lg max-w-xl mx-auto">
-                Upload a road image to detect potholes and get repair planning insights.
+                Upload a road image or video to detect potholes and get detailed repair reports.
               </p>
             </motion.div>
 

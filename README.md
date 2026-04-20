@@ -1,130 +1,136 @@
-# Civ-AI: Smart Road Intelligence
+# Civ-AI: Smart Road Intelligence System
 
-AI-Driven Road Infrastructure Intelligence System for pothole detection, damage assessment, and repair planning.
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js-000000?style=flat-square&logo=next.js)](https://nextjs.org)
+[![YOLOv8](https://img.shields.io/badge/AI-YOLOv8-FF2D20?style=flat-square&logo=ultralytics)](https://github.com/ultralytics/ultralytics)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-## Features
+**Civ-AI** is a state-of-the-art, AI-driven road infrastructure intelligence system. It leverages computer vision to automate pothole detection, damage assessment, repair estimation, and reporting, helping municipalities and road authorities optimize maintenance workflows.
 
-- **Pothole Detection**: YOLOv8-based detection in images
-- **Damage Assessment**: Calculate area, classify severity
-- **Cost Estimation**: Workers, time, and repair costs
-- **Modern UI**: Next.js frontend with dark theme
-- **REST API**: FastAPI backend integration
+---
 
-## Tech Stack
+## 🚀 Key Capabilities
 
-### Frontend
-- Next.js 16 (App Router)
-- Tailwind CSS
-- Framer Motion
-- Axios
+### 🛠 Unified Detection Pipeline
+A single, robust endpoint (`/detect`) that intelligently handles both **Image** and **Video** uploads. The system automatically detects file types and routes them through the appropriate processing engine.
 
-### Backend
-- FastAPI
-- Ultralytics YOLOv8
-- OpenCV
-- NumPy
+### 📹 Video Intelligence
+*   **SSIM-Based Deduplication**: Advanced frame extraction using Structural Similarity Index (SSIM) to filter out redundant frames and optimize processing speed.
+*   **Centroid Tracking**: Intelligent pothole tracking across frames to prevent duplicate counts and ensure accurate reporting.
+*   **Processed Output**: Generates an annotated video with detection overlays for visual verification.
 
-## Quick Start
+### 📊 Automated PDF Reporting
+Generates professional, data-rich PDF reports automatically after video analysis.
+*   **Statistical Breakdown**: Total potholes, severity distribution (Small, Medium, Large).
+*   **Repair Estimation**: Automated cost and labor estimation based on detected damage area.
+*   **Visual Evidence**: High-resolution sample images of detected potholes included in the report.
 
-### Prerequisites
-- Node.js 18+
-- Python 3.10+
-- API key for YOLOv8 model (optional for default model)
+### 🏗 Modern UI/UX
+*   **Glassmorphic Design**: A premium Next.js dashboard with a sleek dark theme.
+*   **Real-time Visualization**: Interactive charts and data visualizations for infrastructure health.
 
-### Backend Setup
+---
 
+## 🛠 Tech Stack
+
+### Backend (Intelligence Layer)
+- **FastAPI**: High-performance Python API framework.
+- **YOLOv8**: Real-time object detection model for infrastructure damage.
+- **OpenCV & Scikit-Image**: Image processing and similarity analysis.
+- **ReportLab**: PDF document generation engine.
+
+### Frontend (User Interface)
+- **Next.js (App Router)**: Modern React framework.
+- **Tailwind CSS**: Utility-first styling for a sleek, responsive UI.
+- **Framer Motion**: Smooth micro-animations and transitions.
+- **Axios**: Robust API communication.
+
+---
+
+## 🏁 Quick Start
+
+### 1. Prerequisites
+- **Python 3.10+**
+- **Node.js 18+**
+
+### 2. Backend Setup
 ```bash
 cd backend
 pip install -r requirements.txt
 python run.py
 ```
+*API will be available at `http://localhost:8000`*
 
-Backend runs on `http://localhost:8000`
-
-### Frontend Setup
-
+### 3. Frontend Setup
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+*UI will be available at `http://localhost:3000`*
 
-Frontend runs on `http://localhost:3000`
+---
 
-## API Usage
+## 🔌 API Reference
 
-### POST /detect
+### Unified Detection
+`POST /detect`
 
+Handles both images and videos. Upload a file as `multipart/form-data`.
+
+**Request:**
 ```bash
 curl -X POST http://localhost:8000/detect \
-  -F "file=@road_image.jpg"
+  -F "file=@road_data.mp4"
 ```
 
-**Response:**
+**Response (Video):**
 ```json
 {
-  "detections": [
-    {
-      "bbox": [x1, y1, x2, y2],
-      "area": 1.5,
-      "severity": "medium",
-      "workers": 2,
-      "cost": 180.0,
-      "time": 4
-    }
-  ],
-  "total_potholes": 1,
-  "total_cost": 180.0,
+  "total_potholes": 12,
+  "total_cost": 2150.50,
   "severity_distribution": {
-    "small": 0,
-    "medium": 1,
-    "large": 0
-  }
+    "small": 5,
+    "medium": 4,
+    "large": 3
+  },
+  "processed_url": "/output/output_video.mp4",
+  "report_url": "/output/reports/report_20240420_123456.pdf"
 }
 ```
 
-## Project Structure
+---
 
-```
+## 📐 Severity & Estimation Logic
+
+| Severity | Area (sq m) | Cost/m² | Workers | Time (hrs) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Small** | < 0.5 | $150 | 1 | 2 |
+| **Medium** | 0.5 - 2.0 | $120 | 2 | 4 |
+| **Large** | > 2.0 | $100 | 4 | 8 |
+
+---
+
+## 📁 Project Structure
+
+```text
 civ-ai/
-├── frontend/           # Next.js frontend
-│   ├── app/
-│   │   ├── page.tsx   # Landing page
-│   │   ├── upload/   # Upload page
-│   │   └── results/  # Results page
-│   ├── components/    # Reusable components
-│   └── services/     # API client
+├── frontend/           # Next.js Application
+│   ├── app/            # App Router pages
+│   ├── components/     # UI Component library
+│   └── services/       # API integration layer
 │
-└── backend/           # FastAPI backend
-    ├── app/
-    │   ├── routes/  # API endpoints
-    │   ├── services/# Business logic
-    │   └── utils/  # Utilities
-    └── models/       # YOLOv8 models
+├── backend/            # FastAPI Application
+│   ├── app/
+│   │   ├── routes/     # Detection & Video endpoints
+│   │   ├── services/   # AI, Tracking, and PDF logic
+│   │   └── utils/      # General utilities
+│   ├── output/         # Processed artifacts (Videos, Reports)
+│   └── models/         # Pre-trained YOLOv8 models
 ```
 
-## Severity Classification
+---
 
-| Severity | Area (sq m) | Cost per sq m | Workers | Time (hrs) |
-|----------|------------|---------------|---------|------------|
-| Small    | < 0.5      | $150          | 1       | 2          |
-| Medium   | 0.5 - 2.0  | $120          | 2       | 4          |
-| Large   | > 2.0      | $100          | 4       | 8          |
+## 📜 License
 
-## Testing
-
-```bash
-cd backend
-python test_api.py
-```
-
-## Environment Variables
-
-Backend (optional):
-- `MODEL_PATH`: Custom YOLOv8 model path
-
-Frontend connects to: `http://localhost:8000/detect`
-
-## License
-
-MIT
+Distributed under the MIT License. See `LICENSE` for more information.
