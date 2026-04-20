@@ -133,14 +133,29 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     if frames:
         first_frame = cv2.imread(os.path.join(frame_dir, frames[0]))
         h, w, _ = first_frame.shape
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
-        
-        for f_name in frames:
-            img = cv2.imread(os.path.join(frame_dir, f_name))
-            video_writer.write(img)
-        
-        video_writer.release()
+        # Use 'avc1' for H.264 (web standard). Fallback to 'mp4v' if necessary.
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+            
+            # Check if video_writer opened successfully. If not, try fallback.
+            if not video_writer.isOpened():
+                logger.warning("avc1 codec failed, falling back to mp4v")
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+        except Exception as e:
+            logger.error(f"Error initializing VideoWriter with avc1: {e}")
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+
+        if video_writer.isOpened():
+            for f_name in frames:
+                img = cv2.imread(os.path.join(frame_dir, f_name))
+                video_writer.write(img)
+            video_writer.release()
+            logger.info(f"Video saved successfully to {output_video_path}")
+        else:
+            logger.error(f"Could not open VideoWriter for {output_video_path}")
 
     total_potholes = len(unique_potholes)
     total_cost = sum(p["cost"] for p in unique_potholes)

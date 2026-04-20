@@ -26,7 +26,6 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
       };
       reader.readAsDataURL(file);
     } else if (file.type.startsWith('video/')) {
-      // For video, we just show a video icon or a temporary preview if possible
       setPreview('video-file'); 
     }
   };
@@ -79,16 +78,16 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
         {preview ? (
           <motion.div
             key="preview"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-white/5 to-white/10 border border-white/10"
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="relative rounded-2xl overflow-hidden bg-zinc-900/50 border border-zinc-800"
           >
             <div className="aspect-video relative flex items-center justify-center bg-black/40">
               {preview === 'video-file' ? (
                 <div className="flex flex-col items-center gap-4">
-                  <Video className="w-16 h-16 text-cyan-400" />
-                  <span className="text-white/70 font-medium">{selectedFile?.name}</span>
+                  <Video className="w-16 h-16 text-white" />
+                  <span className="text-zinc-400 font-medium">{selectedFile?.name}</span>
                 </div>
               ) : (
                 <img
@@ -99,7 +98,7 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
               )}
               <button
                 onClick={handleRemove}
-                className="absolute top-4 right-4 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-white hover:text-black transition-all duration-200"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -110,17 +109,17 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleUpload}
                 disabled={isLoading}
-                className="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-8 py-3 rounded-xl bg-white text-black font-semibold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:bg-zinc-200"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    {selectedFile?.type.startsWith('video/') ? 'Deep Video Analysis...' : 'Analyzing Image...'}
+                    <span>{selectedFile?.type.startsWith('video/') ? 'Analyzing Video...' : 'Analyzing Image...'}</span>
                   </>
                 ) : (
                   <>
                     <Upload className="w-5 h-5" />
-                    Upload & Analyze
+                    <span>Analyze Road</span>
                   </>
                 )}
               </motion.button>
@@ -129,9 +128,9 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
         ) : (
           <motion.div
             key="dropzone"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
+            exit={{ opacity: 0, scale: 0.95 }}
           >
             <div
               onDragEnter={handleDrag}
@@ -140,8 +139,8 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
               onDrop={handleDrop}
               className={`relative rounded-2xl border-2 border-dashed transition-all duration-300 ${
                 dragActive
-                  ? 'border-cyan-400 bg-cyan-400/10'
-                  : 'border-white/20 hover:border-white/40'
+                  ? 'border-white bg-white/5'
+                  : 'border-zinc-800 hover:border-zinc-700 bg-zinc-900/30'
               }`}
             >
               <input
@@ -155,18 +154,17 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
                 <motion.div
                   animate={{
                     scale: dragActive ? 1.1 : 1,
-                    rotate: dragActive ? 5 : 0,
                   }}
                   transition={{ type: 'spring', stiffness: 300 }}
-                  className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 flex items-center justify-center mb-4"
+                  className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-zinc-800"
                 >
-                  <ImageIcon className="w-8 h-8 text-cyan-400" />
+                  <ImageIcon className="w-8 h-8 text-white" />
                 </motion.div>
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Drop road image or video here
+                <h3 className="text-xl font-bold text-white mb-2">
+                  Upload road media
                 </h3>
-                <p className="text-white/50 text-center max-w-md">
-                  or click to browse. We support images and MP4, MOV videos.
+                <p className="text-zinc-500 text-center max-w-md">
+                  Drag and drop road images or videos here, or click to browse files.
                 </p>
               </div>
             </div>

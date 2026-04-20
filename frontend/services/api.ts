@@ -26,6 +26,7 @@ export interface DetectionResponse {
 }
 
 export interface VideoDetectionResponse {
+  detections: DetectionResult[];
   total_potholes: number;
   total_cost: number;
   severity_distribution: {
@@ -34,6 +35,7 @@ export interface VideoDetectionResponse {
     large: number;
   };
   report_url: string;
+  video_url: string;
 }
 
 export const detectPotholes = async (file: File): Promise<DetectionResponse> => {
@@ -63,7 +65,7 @@ export const detectVideo = async (file: File): Promise<VideoDetectionResponse> =
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 600000, // 10 minutes for video processing (increased for deep analysis)
+      timeout: 900000, // 15 minutes for video processing (increased for larger files)
     }
   );
 
