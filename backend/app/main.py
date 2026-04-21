@@ -9,6 +9,10 @@ from app.routes import detect, video
 from fastapi.staticfiles import StaticFiles
 import os
 import mimetypes
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 # Ensure .mp4 is correctly served for all browsers
 mimetypes.add_type('video/mp4', '.mp4')
@@ -31,10 +35,13 @@ async def lifespan(app: FastAPI):
     logger.info("Civ-AI Backend shutting down...")
 
 
+# Get version from .env (fallback to 1.0.0)
+BACKEND_VERSION = os.getenv("PYTHON_VERSION", "1.0.0")
+
 app = FastAPI(
     title="Civ-AI API",
     description="AI-Driven Road Infrastructure Intelligence System",
-    version="1.0.0",
+    version=BACKEND_VERSION,
     lifespan=lifespan,
 )
 
