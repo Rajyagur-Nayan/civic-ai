@@ -24,15 +24,21 @@ export default function ResultsPage() {
 
   useEffect(() => {
     setMounted(true);
-    const stored = sessionStorage.getItem('detectionResult');
-    if (stored) {
+    console.log("ResultsPage mounted, checking session storage...");
+    
+    // Task 2: Retrieve session storage safely
+    const raw = sessionStorage.getItem('resultData');
+    if (raw) {
       try {
-        setResult(JSON.parse(stored));
+        const data = JSON.parse(raw);
+        console.log("Result page data successfully loaded:", data);
+        setResult(data);
       } catch (err) {
-        console.error('Failed to parse detection result', err);
+        console.error('CRITICAL: Failed to parse resultData', err);
         router.push('/upload');
       }
     } else {
+      console.warn("No resultData found in session storage, redirecting to upload...");
       router.push('/upload');
     }
   }, [router]);
@@ -56,6 +62,8 @@ export default function ResultsPage() {
     large: 'border-white',
   };
 
+  const hasDetections = result.detections && result.detections.length > 0;
+
   return (
     <div className="min-h-screen bg-black relative flex flex-col pt-32 px-6 pb-20">
       <motion.div
@@ -78,6 +86,7 @@ export default function ResultsPage() {
             </h1>
           </div>
 
+          {/* Always show report download button if URL exists, regardless of detections count */}
           {result.report_url && (
             <motion.a
               whileHover={{ scale: 1.02 }}
@@ -102,7 +111,7 @@ export default function ResultsPage() {
 
         {/* Detailed Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
-          {/* Visual Evidence Card */}
+          {/* Visual Evidence Card - Expanded if video exists */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -136,16 +145,14 @@ export default function ResultsPage() {
                   <div className="flex flex-col gap-4">
                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">AI Detection Overlay</p>
                     <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video">
-                      {result.video_url && (
-                        <video 
-                          src={getFullReportUrl(result.video_url)} 
-                          autoPlay 
-                          muted 
-                          loop 
-                          playsInline
-                          className="w-full h-full object-cover"
-                        />
-                      )}
+                      <video 
+                        src={getFullReportUrl(result.video_url)} 
+                        autoPlay 
+                        muted 
+                        loop 
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                 </div>
@@ -210,10 +217,11 @@ export default function ResultsPage() {
               <p className="text-[10px] text-zinc-500 font-bold uppercase mt-1">{(result.detections?.length || 0)} Total Objects Found</p>
             </div>
             <div className="p-6 flex-grow max-h-[600px] overflow-y-auto space-y-4">
-              {(!result.detections || result.detections.length === 0) ? (
-                <div className="flex flex-col items-center justify-center h-full py-12 text-zinc-800">
+              {!hasDetections ? (
+                <div className="flex flex-col items-center justify-center h-full py-12 text-zinc-500">
                   <AlertCircle className="w-12 h-12 mb-4 opacity-10" />
-                  <p className="font-black uppercase tracking-widest text-xs">No Potholes Detected</p>
+                  <p className="font-black uppercase tracking-widest text-[10px]">No Potholes Detected</p>
+                  <p className="text-[8px] uppercase tracking-tighter mt-2 opacity-50">Road surface appears clear of identifiable defects</p>
                 </div>
               ) : (
                 result.detections?.map((detection, index) => (

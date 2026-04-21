@@ -104,5 +104,9 @@ export const createImageUrl = (file: File): string => {
 };
 
 export const getFullReportUrl = (reportPath: string): string => {
-  return `${API_BASE_URL}${reportPath}`;
+  if (!reportPath) return '';
+  if (reportPath.startsWith('http')) return reportPath;
+  const fullUrl = `${API_BASE_URL}${reportPath}`;
+  console.log(`DEBUG: Resolving full report URL for ${reportPath} -> ${fullUrl}`);
+  return fullUrl;
 };

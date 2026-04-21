@@ -41,10 +41,13 @@ export default function UploadPage() {
         originalVideoUrl: response.original_url || null,
       };
 
-      console.log("Saving resultData to sessionStorage:", resultData);
-      sessionStorage.setItem("detectionResult", JSON.stringify(resultData));
+      console.log("Preparing to save data to session storage...");
+      console.log("Result data items count:", Object.keys(resultData).length);
       
-      console.log("Navigating to /results...");
+      sessionStorage.setItem("resultData", JSON.stringify(resultData));
+      console.log("Data saved successfully to key: resultData");
+      
+      console.log("Trigging navigation to /results...");
       router.push("/results");
     } catch (err: any) {
       console.error("handleUpload catch block triggered with error:", err);
