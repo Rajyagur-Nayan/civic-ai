@@ -32,6 +32,15 @@ export default function ResultsPage() {
       try {
         const data = JSON.parse(raw);
         console.log("Result page data successfully loaded:", data);
+        
+        // Debug logs for video URLs
+        if (data.video_url) {
+          console.log("RESOLVED OUTPUT VIDEO URL:", getFullReportUrl(data.video_url));
+        }
+        if (data.originalVideoUrl) {
+          console.log("RESOLVED INPUT VIDEO URL:", getFullReportUrl(data.originalVideoUrl));
+        }
+        
         setResult(data);
       } catch (err) {
         console.error('CRITICAL: Failed to parse resultData', err);
@@ -136,9 +145,23 @@ export default function ResultsPage() {
                           muted 
                           loop 
                           playsInline
-                          className="w-full h-full object-cover"
+                          controls
+                          crossOrigin="anonymous"
+                          onLoadedData={() => console.log("SUCCESS: Input video loaded")}
+                          onError={(e) => console.error("ERROR: Input video failed to load", e)}
+                          className="w-full h-full object-contain"
                         />
                       )}
+                    </div>
+                    <div className="mt-2 text-right">
+                      <a 
+                        href={getFullReportUrl(result.originalVideoUrl || '')} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-zinc-500 hover:text-white underline uppercase tracking-widest"
+                      >
+                        [ Open Direct Link ]
+                      </a>
                     </div>
                   </div>
                   {/* Right: Processed Video */}
@@ -151,8 +174,24 @@ export default function ResultsPage() {
                         muted 
                         loop 
                         playsInline
-                        className="w-full h-full object-cover"
+                        controls
+                        crossOrigin="anonymous"
+                        onLoadedData={() => console.log("SUCCESS: Processed video loaded")}
+                        onError={(e) => console.error("ERROR: Processed video failed to load", e)}
+                        className="w-full h-full object-contain"
                       />
+                    </div>
+                    <div className="mt-2 text-right">
+                      {result.video_url && (
+                        <a 
+                          href={getFullReportUrl(result.video_url)} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-zinc-500 hover:text-white underline uppercase tracking-widest"
+                        >
+                          [ Open Direct Link ]
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>

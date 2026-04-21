@@ -5,10 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.services.detection import get_model
 from app.routes import detect, video
 from fastapi.staticfiles import StaticFiles
 import os
+import mimetypes
+
+# Ensure .mp4 is correctly served for all browsers
+mimetypes.add_type('video/mp4', '.mp4')
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -23,14 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Civ-AI Backend starting up...")
-    try:
-        # Load model once at startup
-        get_model()
-        logger.info("YOLO Model initialized successfully at startup")
-    except Exception as e:
-        logger.error(f"Failed to initialize model at startup: {e}")
-        # We don't exit here to allow infrastructure to start, but requests will fail
+    logger.info("Civ-AI Backend starting up... (YOLO model loaded globally)")
     yield
     logger.info("Civ-AI Backend shutting down...")
 

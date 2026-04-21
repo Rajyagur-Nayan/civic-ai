@@ -56,6 +56,7 @@ async def detect_video_endpoint(
         
         # Add metadata and schedule cleanup
         results["job_id"] = job_id
+        results["original_url"] = f"/uploads/{safe_filename}"
         background_tasks.add_task(cleanup_job, upload_path, job_output_dir)
         
         logger.info(f"Video Job {job_id} success")

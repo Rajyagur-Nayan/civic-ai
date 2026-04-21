@@ -10,37 +10,25 @@ import io
 
 logger = logging.getLogger(__name__)
 
-# Singleton model instance
-_model: Optional[YOLO] = None
-
-def get_model_path() -> Path:
-    """Get absolute path to best.pt"""
-    # Path relative to this file: services/detection.py -> app/models/yolov8/best.pt
+# --- GLOBAL MODEL INITIALIZATION (Loads ONLY ONCE when module is imported) ---
+try:
+    # Use absolute path resolution for reliable loading
     base_path = Path(__file__).resolve().parent.parent
     model_path = base_path / "models" / "yolov8" / "best.pt"
-    return model_path
-
-def get_model() -> YOLO:
-    """Load custom YOLOv8 model (singleton pattern)"""
-    global _model
-    if _model is None:
-        try:
-            model_path = get_model_path()
-            logger.info(f"Loading custom YOLO model from: {model_path}")
-            
-            if not model_path.exists():
-                logger.error(f"Model file not found at {model_path}")
-                # Fallback to default if best.pt is missing (for safety)
-                _model = YOLO("yolov8n.pt")
-                logger.warning("Fell back to yolov8n.pt because best.pt was missing")
-            else:
-                # Use standard Ultralytics YOLO loading (avoids torch.load weight_only errors)
-                _model = YOLO(str(model_path))
-                logger.info("Model loaded successfully: best.pt")
-        except Exception as e:
-            logger.error(f"Failed to load model: {e}")
-            raise RuntimeError(f"YOLO Model Initialization Failed: {e}")
-    return _model
+    
+    if not model_path.exists():
+        logger.error(f"CRITICAL: Model file not found at {model_path}")
+        # Fallback to default for safety so the app doesn't crash entirely if not strictly required
+        model = YOLO("yolov8n.pt")
+        logger.warning("Fell back to yolov8n.pt because best.pt was missing")
+    else:
+        # Standard Ultralytics YOLO loading
+        model = YOLO(str(model_path))
+        logger.info("YOLO model loaded successfully")
+except Exception as e:
+    logger.error(f"FAILURE: YOLO model could not be initialized: {e}")
+    # Re-raise to ensure the app fails to start if model loading is corrupted
+    raise RuntimeError(f"YOLO model initialization failed: {e}")
 
 def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
     """Convert bytes to OpenCV BGR image"""
@@ -62,7 +50,6 @@ def detect_potholes(
         return []
 
     try:
-        model = get_model()
         logger.info("Inference started...")
         
         # Convert bytes to OpenCV image
@@ -72,6 +59,7 @@ def detect_potholes(
         img_pil = Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
         
         # Run inference with optimized parameters
+        # Use the global 'model' loaded at the module level
         results = model.predict(
             source=img_pil, 
             conf=0.25,      # Lower threshold for more detections
