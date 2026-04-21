@@ -38,6 +38,9 @@ async def detect_potholes_endpoint(
     """
     Unified endpoint for Image and Video detection with automated cleanup.
     """
+    print(f"DEBUG: Request received at /detect endpoint")
+    print(f"DEBUG: Processing file: {file.filename}, Content-Type: {file.content_type}")
+    
     # 1. Initialization
     job_id = str(uuid.uuid4())
     filename = file.filename

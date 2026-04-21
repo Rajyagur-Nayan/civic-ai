@@ -12,16 +12,28 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleUpload = async (file: File) => {
+    console.log("handleUpload triggered");
+    if (!file) {
+      console.log("No file selected for upload");
+      return;
+    }
+    console.log("Selected file:", file.name, "Type:", file.type, "Size:", file.size);
+
     setIsLoading(true);
     setError(null);
 
     try {
+      console.log("Preparing to analyze asset...");
       let response: any;
       if (file.type.startsWith("video/")) {
+        console.log("File detected as VIDEO");
         response = await detectVideo(file);
       } else {
+        console.log("File detected as IMAGE");
         response = await detectPotholes(file);
       }
+
+      console.log("Analysis successful. Backend response:", response);
 
       const resultData = {
         ...response,
@@ -29,9 +41,13 @@ export default function UploadPage() {
         originalVideoUrl: response.original_url || null,
       };
 
+      console.log("Saving resultData to sessionStorage:", resultData);
       sessionStorage.setItem("detectionResult", JSON.stringify(resultData));
+      
+      console.log("Navigating to /results...");
       router.push("/results");
     } catch (err: any) {
+      console.error("handleUpload catch block triggered with error:", err);
       if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
         setError(
           "Analysis timed out. Please try with a shorter video or a high-quality image.",
@@ -39,9 +55,10 @@ export default function UploadPage() {
       } else {
         setError("Failed to analyze the file. Please try again.");
       }
-      console.error(err);
+      console.error("Error details:", err);
     } finally {
       setIsLoading(false);
+      console.log("handleUpload flow finished (finally block)");
     }
   };
 

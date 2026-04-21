@@ -59,8 +59,12 @@ export default function UploadBox({ onUpload, isLoading }: UploadBoxProps) {
   };
 
   const handleUpload = () => {
+    console.log("Analyze Road button clicked");
     if (selectedFile) {
+      console.log("Passing file to onUpload handler:", selectedFile.name);
       onUpload(selectedFile);
+    } else {
+      console.log("handleUpload called but no file selected");
     }
   };
 
