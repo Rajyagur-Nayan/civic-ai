@@ -23,6 +23,7 @@ export interface DetectionResponse {
   };
   image_url?: string;
   report_url?: string;
+  original_url?: string;
 }
 
 export interface VideoDetectionResponse {
@@ -36,6 +37,7 @@ export interface VideoDetectionResponse {
   };
   report_url: string;
   video_url: string;
+  original_url?: string;
 }
 
 export const detectPotholes = async (file: File): Promise<DetectionResponse> => {
@@ -72,6 +74,7 @@ export const detectVideo = async (file: File): Promise<VideoDetectionResponse> =
   return response.data;
 };
 
+/** @deprecated Use persistent original_url from backend response instead */
 export const createImageUrl = (file: File): string => {
   return URL.createObjectURL(file);
 };

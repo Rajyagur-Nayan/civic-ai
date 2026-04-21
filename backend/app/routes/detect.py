@@ -124,7 +124,8 @@ async def detect_potholes_endpoint(
                 "total_potholes": len(results),
                 "total_cost": round(total_cost, 2),
                 "severity_distribution": severity_dist,
-                "processed_url": f"/output/{job_id}/result.jpg"
+                "processed_url": f"/output/{job_id}/result.jpg",
+                "original_url": f"/uploads/{safe_filename}"
             }
 
         else:
@@ -133,6 +134,7 @@ async def detect_potholes_endpoint(
             
             # Map video results to unified response keys
             results["job_id"] = job_id
+            results["original_url"] = f"/uploads/{safe_filename}"
             if "video_url" in results:
                 results["processed_url"] = results["video_url"]
             

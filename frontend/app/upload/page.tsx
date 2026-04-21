@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import UploadBox from "@/components/UploadBox";
-import { detectPotholes, detectVideo, createImageUrl } from "@/services/api";
+import { detectPotholes, detectVideo } from "@/services/api";
 import { useRouter } from "next/navigation";
 
 export default function UploadPage() {
@@ -16,22 +16,17 @@ export default function UploadPage() {
     setError(null);
 
     try {
-      let originalVideoUrl: string | null = null;
       let response: any;
-      let imageUrl: string | null = null;
-
       if (file.type.startsWith("video/")) {
-        originalVideoUrl = createImageUrl(file);
         response = await detectVideo(file);
       } else {
-        imageUrl = createImageUrl(file);
         response = await detectPotholes(file);
       }
 
       const resultData = {
         ...response,
-        imageUrl,
-        originalVideoUrl,
+        imageUrl: response.original_url || null,
+        originalVideoUrl: response.original_url || null,
       };
 
       sessionStorage.setItem("detectionResult", JSON.stringify(resultData));

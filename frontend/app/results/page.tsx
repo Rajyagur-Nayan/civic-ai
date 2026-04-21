@@ -122,7 +122,7 @@ export default function ResultsPage() {
                     <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-black aspect-video">
                       {result.originalVideoUrl && (
                         <video 
-                          src={result.originalVideoUrl} 
+                          src={getFullReportUrl(result.originalVideoUrl || '')} 
                           autoPlay 
                           muted 
                           loop 
@@ -154,7 +154,7 @@ export default function ResultsPage() {
                   {result.imageUrl ? (
                     <>
                       <img
-                        src={result.imageUrl || ''}
+                        src={getFullReportUrl(result.imageUrl || '')}
                         alt="Analyzed road"
                         onLoad={handleImageLoad}
                         className="w-full h-auto"
