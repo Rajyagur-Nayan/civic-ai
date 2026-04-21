@@ -133,20 +133,15 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     if frames:
         first_frame = cv2.imread(os.path.join(frame_dir, frames[0]))
         h, w, _ = first_frame.shape
-        # Use 'avc1' for H.264 (web standard). Fallback to 'mp4v' if necessary.
+        # Use 'mp4v' for MP4 containers (widely supported)
         try:
-            fourcc = cv2.VideoWriter_fourcc(*'avc1')
-            video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
-            
-            # Check if video_writer opened successfully. If not, try fallback.
-            if not video_writer.isOpened():
-                logger.warning("avc1 codec failed, falling back to mp4v")
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
-        except Exception as e:
-            logger.error(f"Error initializing VideoWriter with avc1: {e}")
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+            
+            if not video_writer.isOpened():
+                logger.error(f"Could not open VideoWriter for {output_video_path} with mp4v")
+        except Exception as e:
+            logger.error(f"Error initializing VideoWriter with mp4v: {e}")
 
         if video_writer.isOpened():
             for f_name in frames:

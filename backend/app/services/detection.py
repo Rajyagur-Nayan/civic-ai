@@ -34,11 +34,12 @@ def get_model() -> YOLO:
                 _model = YOLO("yolov8n.pt")
                 logger.warning("Fell back to yolov8n.pt because best.pt was missing")
             else:
+                # Use standard Ultralytics YOLO loading (avoids torch.load weight_only errors)
                 _model = YOLO(str(model_path))
-                logger.info("Custom model (best.pt) loaded successfully")
+                logger.info("Model loaded successfully: best.pt")
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
-            raise
+            raise RuntimeError(f"YOLO Model Initialization Failed: {e}")
     return _model
 
 def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
@@ -49,26 +50,6 @@ def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
         raise ValueError("Invalid image format")
     return img
 
-def preprocess_image(img_cv2: np.ndarray) -> np.ndarray:
-    """
-    Enhance image for better detection.
-    1. CLAHE (Contrast Limited Adaptive Histogram Equalization)
-    2. Sharpening
-    """
-    # 1. CLAHE (apply to L channel in LAB color space)
-    lab = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2LAB)
-    l_channel, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    cl = clahe.apply(l_channel)
-    limg = cv2.merge((cl, a, b))
-    enhanced_img = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-
-    # 2. Sharpening
-    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-    sharpened = cv2.filter2D(enhanced_img, -1, kernel)
-    
-    return sharpened
-
 def detect_potholes(
     image_bytes: bytes, 
     imgsz: int = 1280, 
@@ -76,26 +57,19 @@ def detect_potholes(
 ) -> List[Dict[str, Any]]:
     """
     Advanced detection pipeline with accuracy upgrades.
-    1. Configurable resolution (default 1280)
-    2. Configurable TTA (default True)
-    3. Lowered confidence threshold (0.25)
-    4. Enhanced image preprocessing (CLAHE + Sharpening)
     """
     if not image_bytes:
         return []
 
     try:
         model = get_model()
+        logger.info("Inference started...")
         
         # Convert bytes to OpenCV image
         img_cv2 = bytes_to_cv2(image_bytes)
         
-        # Perform Preprocessing for better recall
-        processed_img = preprocess_image(img_cv2)
-        img_gray = cv2.cvtColor(processed_img, cv2.COLOR_BGR2GRAY)
-        
         # PIL for YOLO inference (preferred by Ultralytics)
-        img_pil = Image.fromarray(cv2.cvtColor(processed_img, cv2.COLOR_BGR2RGB))
+        img_pil = Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
         
         # Run inference with optimized parameters
         results = model.predict(
@@ -109,12 +83,12 @@ def detect_potholes(
         
         detections = []
         if not results:
+            logger.info("Inference results count: 0")
             return []
 
         result = results[0]
         boxes = result.boxes
-        height_orig, width_orig = img_cv2.shape[:2]
-
+        
         for box in boxes:
             # 1. Basic properties
             xyxy = box.xyxy[0].cpu().numpy().tolist()
@@ -124,25 +98,10 @@ def detect_potholes(
             w = x2 - x1
             h = y2 - y1
 
-            # 2. Lenient Aspect Ratio Filter (Reject extreme outliers only)
+            # 2. Basic sanity checks (Removed aggressive filters to avoid empty results)
             if w <= 0 or h <= 0: continue
-            aspect_ratio = w / h
-            if aspect_ratio > 4 or aspect_ratio < 0.25:
-                # logger.info(f"Skipping detection: Aspect Ratio {aspect_ratio:.2f} too extreme")
-                continue
 
-            # 3. Lenient Brightness Filter (Potholes are usually shadowed)
-            rx1, ry1 = max(0, x1), max(0, y1)
-            rx2, ry2 = min(width_orig, x2), min(height_orig, y2)
-            roi = img_gray[ry1:ry2, rx1:rx2]
-            
-            if roi.size > 10:
-                mean_brightness = np.mean(roi)
-                if mean_brightness > 180: # Increased threshold from 140
-                    # logger.info(f"Skipping detection: Mean brightness {mean_brightness:.1f} too high")
-                    continue
-
-            # 4. Valid detection confirmed
+            # 3. Valid detection confirmed
             detections.append({
                 "bbox": [round(float(x), 2) for x in xyxy],
                 "width": float(w),
@@ -150,12 +109,12 @@ def detect_potholes(
                 "confidence": round(conf, 3)
             })
 
-        logger.info(f"Accuracy pipeline: {len(boxes)} raw -> {len(detections)} filtered")
+        logger.info(f"Inference results count: {len(detections)}")
         return detections
 
     except Exception as e:
         logger.error(f"Detection error: {e}")
-        return []
+        raise RuntimeError(f"ML Processing Failed: {e}")
 
 def draw_detections(image_bytes: bytes, detections: List[Dict[str, Any]]) -> np.ndarray:
     """
