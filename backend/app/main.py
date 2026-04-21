@@ -1,4 +1,6 @@
 import logging
+import matplotlib
+matplotlib.use("Agg")
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,18 +23,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Civ-AI Backend starting up...")
-    
-    # Initialize base infrastructure directories
-    directories = [
-        BASE_DIR / "uploads",
-        BASE_DIR / "output",
-        BASE_DIR / "temp"
-    ]
-    
-    for directory in directories:
-        directory.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Ensured directory exists: {directory}")
-        
     yield
     logger.info("Civ-AI Backend shutting down...")
 
@@ -54,6 +44,17 @@ app.add_middleware(
 
 app.include_router(detect.router, prefix="/detect", tags=["Detection"])
 app.include_router(video.router, prefix="/detect/video", tags=["Video Detection"])
+
+# Initialize base infrastructure directories
+directories = [
+    BASE_DIR / "uploads",
+    BASE_DIR / "output",
+    BASE_DIR / "temp"
+]
+
+for directory in directories:
+    directory.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Ensured directory exists: {directory}")
 
 # Mount static files for job results and artifacts
 UPLOADS_DIR = BASE_DIR / "uploads"
