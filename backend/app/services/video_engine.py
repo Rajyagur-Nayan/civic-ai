@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 # Constants
 SCALE_FACTOR = 0.0005
 COST_PER_M2 = 100
-MAX_PROCESSING_TIME = 85  # Seconds (Safe buffer before Render 100s timeout)
-MAX_TOTAL_FRAMES = 150    # Limit for Render stability
+# Smarter limits: Strict for Render (100s timeout), generous for Local
+IS_RENDER = os.getenv("RENDER", "false").lower() == "true"
+MAX_PROCESSING_TIME = 85 if IS_RENDER else 600 
+MAX_TOTAL_FRAMES = 150 if IS_RENDER else 5000  # 5000 frames is ~2.7 mins at 30fps without skipping
 SIMILARITY_THRESHOLD = 0.95
 
 def compare_frames(gray1: np.ndarray, gray2: np.ndarray) -> float:
@@ -154,13 +156,18 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     
     if frames:
         try:
-            # Use mp4v - highly compatible on Linux/Render
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            # User requested 15 FPS
+            # Use avc1 (H.264) for universal browser compatibility
+            # Fallback chain: avc1 -> mp4v
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
             video_writer = cv2.VideoWriter(output_video_path, fourcc, 15.0, (target_w, target_h))
             
             if not video_writer.isOpened():
-                raise RuntimeError("VideoWriter failed to initialize with mp4v codec")
+                logger.warning("avc1 codec failed, falling back to mp4v")
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                video_writer = cv2.VideoWriter(output_video_path, fourcc, 15.0, (target_w, target_h))
+
+            if not video_writer.isOpened():
+                raise RuntimeError("VideoWriter failed to initialize with available codecs")
             
             for f_name in frames:
                 img = cv2.imread(os.path.join(frame_dir, f_name))

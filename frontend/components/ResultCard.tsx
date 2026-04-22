@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { AlertTriangle, Ruler, DollarSign, Users, Clock } from 'lucide-react';
+import { AlertTriangle, Ruler, IndianRupee, Users, Clock } from 'lucide-react';
 
 interface ResultCardProps {
   detection: {
@@ -30,7 +30,7 @@ export default function ResultCard({ detection, index }: ResultCardProps) {
 
   const stats = [
     { icon: Ruler, label: 'Area', value: `${detection.area.toFixed(1)} m²` },
-    { icon: DollarSign, label: 'Est. Cost', value: `₹${detection.cost.toFixed(0)}` },
+    { icon: IndianRupee, label: 'Est. Cost', value: `₹${detection.cost.toFixed(0)}` },
     { icon: Users, label: 'Team', value: `${detection.workers}` },
     { icon: Clock, label: 'Time', value: `${detection.time}h` },
   ];

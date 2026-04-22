@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { motion } from "framer-motion";
 import UploadBox from "@/components/UploadBox";
 import { detectPotholes, detectVideo } from "@/services/api";
 import { useRouter } from "next/navigation";
 
-export default function UploadPage() {
+export default function UploadPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Satisfy Next.js 15 sync-dynamic-apis warning
+  use(searchParams);
+  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

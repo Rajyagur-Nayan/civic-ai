@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, AlertCircle, Download, FileText } from 'lucide-react';
@@ -16,7 +16,14 @@ interface ResultData extends DetectionResponse {
   originalVideoUrl?: string | null;
 }
 
-export default function ResultsPage() {
+export default function ResultsPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
+  // Satisfy Next.js 15 sync-dynamic-apis warning
+  use(searchParams);
+  
   const router = useRouter();
   const [result, setResult] = useState<ResultData | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -148,7 +155,15 @@ export default function ResultsPage() {
                           controls
                           crossOrigin="anonymous"
                           onLoadedData={() => console.log("SUCCESS: Input video loaded")}
-                          onError={(e) => console.error("ERROR: Input video failed to load", e)}
+                          onError={(e) => {
+                            const target = e.target as HTMLVideoElement;
+                            console.error("ERROR: Input video failed to load", {
+                              src: target.src,
+                              error: target.error,
+                              code: target.error?.code,
+                              message: target.error?.message
+                            });
+                          }}
                           className="w-full h-full object-contain"
                         />
                       )}
@@ -177,7 +192,15 @@ export default function ResultsPage() {
                         controls
                         crossOrigin="anonymous"
                         onLoadedData={() => console.log("SUCCESS: Processed video loaded")}
-                        onError={(e) => console.error("ERROR: Processed video failed to load", e)}
+                        onError={(e) => {
+                          const target = e.target as HTMLVideoElement;
+                          console.error("ERROR: Processed video failed to load", {
+                            src: target.src,
+                            error: target.error,
+                            code: target.error?.code,
+                            message: target.error?.message
+                          });
+                        }}
                         className="w-full h-full object-contain"
                       />
                     </div>

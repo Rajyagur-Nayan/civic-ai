@@ -1,10 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { use } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, MapPin, Zap, Shield, BarChart3 } from 'lucide-react';
 
-export default function Home() {
+export default function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Satisfy Next.js 15 sync-dynamic-apis warning
+  use(searchParams);
+
   const features = [
     {
       icon: Zap,

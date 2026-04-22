@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertTriangle, DollarSign, BarChart3 } from "lucide-react";
+import { AlertTriangle, IndianRupee, BarChart3 } from "lucide-react";
 
 interface DashboardStatsProps {
   totalPotholes: number;
@@ -49,7 +49,7 @@ export default function DashboardStats({
       >
         <div className="flex items-center gap-4 mb-4">
           <div className="w-12 h-12 rounded-xl bg-white/5 border border-zinc-800 flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-white" />
+            <IndianRupee className="w-6 h-6 text-white" />
           </div>
           <div>
             <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">Est. Repair Cost</p>
