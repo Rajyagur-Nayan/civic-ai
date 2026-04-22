@@ -4,7 +4,15 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import numpy as np
 import cv2
+import torch
 from ultralytics import YOLO
+try:
+    from ultralytics.nn.tasks import DetectionModel
+    # Add to safe globals for PyTorch 2.6+ compatibility
+    if hasattr(torch.serialization, 'add_safe_globals'):
+        torch.serialization.add_safe_globals([DetectionModel])
+except (ImportError, AttributeError):
+    pass
 from PIL import Image
 import io
 
