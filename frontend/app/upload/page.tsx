@@ -13,7 +13,7 @@ export default function UploadPage({
 }) {
   // Satisfy Next.js 15 sync-dynamic-apis warning
   use(searchParams);
-  
+
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,14 @@ export default function UploadPage({
       console.log("No file selected for upload");
       return;
     }
-    console.log("Selected file:", file.name, "Type:", file.type, "Size:", file.size);
+    console.log(
+      "Selected file:",
+      file.name,
+      "Type:",
+      file.type,
+      "Size:",
+      file.size,
+    );
 
     setIsLoading(true);
     setError(null);
@@ -50,10 +57,10 @@ export default function UploadPage({
 
       console.log("Preparing to save data to session storage...");
       console.log("Result data items count:", Object.keys(resultData).length);
-      
+
       sessionStorage.setItem("resultData", JSON.stringify(resultData));
       console.log("Data saved successfully to key: resultData");
-      
+
       console.log("Trigging navigation to /results...");
       router.push("/results");
     } catch (err: any) {

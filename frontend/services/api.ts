@@ -1,11 +1,11 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface DetectionResult {
   bbox: number[];
   area: number;
-  severity: 'small' | 'medium' | 'large';
+  severity: "small" | "medium" | "large";
   workers: number;
   cost: number;
   time: number;
@@ -40,10 +40,12 @@ export interface VideoDetectionResponse {
   original_url?: string;
 }
 
-export const detectPotholes = async (file: File): Promise<DetectionResponse> => {
+export const detectPotholes = async (
+  file: File,
+): Promise<DetectionResponse> => {
   console.log("detectPotholes triggered with file:", file.name);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   console.log("Preparing request to detect potholes...");
   console.log("API URL:", `${API_BASE_URL}/detect`);
@@ -55,9 +57,9 @@ export const detectPotholes = async (file: File): Promise<DetectionResponse> => 
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
 
     console.log("Response received from backend:", response);
@@ -68,10 +70,12 @@ export const detectPotholes = async (file: File): Promise<DetectionResponse> => 
     throw error;
   }
 };
-export const detectVideo = async (file: File): Promise<VideoDetectionResponse> => {
+export const detectVideo = async (
+  file: File,
+): Promise<VideoDetectionResponse> => {
   console.log("detectVideo triggered with file:", file.name);
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   console.log("Preparing request to detect video...");
   console.log("API URL:", `${API_BASE_URL}/detect/video`);
@@ -83,10 +87,10 @@ export const detectVideo = async (file: File): Promise<VideoDetectionResponse> =
       formData,
       {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
-        timeout: 900000, 
-      }
+        timeout: 900000,
+      },
     );
 
     console.log("Response received from backend:", response);
@@ -104,9 +108,11 @@ export const createImageUrl = (file: File): string => {
 };
 
 export const getFullReportUrl = (reportPath: string): string => {
-  if (!reportPath) return '';
-  if (reportPath.startsWith('http')) return reportPath;
+  if (!reportPath) return "";
+  if (reportPath.startsWith("http")) return reportPath;
   const fullUrl = `${API_BASE_URL}${reportPath}`;
-  console.log(`DEBUG: Resolving full report URL for ${reportPath} -> ${fullUrl}`);
+  console.log(
+    `DEBUG: Resolving full report URL for ${reportPath} -> ${fullUrl}`,
+  );
   return fullUrl;
 };
