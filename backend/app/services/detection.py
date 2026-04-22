@@ -50,8 +50,8 @@ def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
 
 def detect_potholes(
     image_bytes: bytes, 
-    imgsz: int = 1280, 
-    augment: bool = True
+    imgsz: int = 640, 
+    augment: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Advanced detection pipeline with accuracy upgrades.
@@ -78,6 +78,7 @@ def detect_potholes(
             iou=0.45,       # Adjusted NMS IoU
             imgsz=imgsz,    # Parameterized resolution
             augment=augment, # Parameterized TTA
+            device="cpu",   # Force CPU for Render stability
             verbose=False
         )
         

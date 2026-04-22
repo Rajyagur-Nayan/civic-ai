@@ -16,57 +16,85 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOADS_DIR = BASE_DIR / "uploads"
 OUTPUT_DIR = BASE_DIR / "output"
 
+# 20MB limit for Render free tier stability
+MAX_FILE_SIZE = 20 * 1024 * 1024 
+
 @router.post("", response_model=None)
 async def detect_video_endpoint(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
     """
-    Endpoint specifically for Video detection with automated cleanup.
+    Endpoint for Video detection optimized for Render.
+    Includes file size limits and robust error handling to prevent connection resets.
     """
     job_id = str(uuid.uuid4())
+    print(f"REQUEST RECEIVED: Video detection for {file.filename}")
+    
+    # 1. Validation
+    if not file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
+        raise HTTPException(status_code=400, detail="Invalid video format. Supported: .mp4, .avi, .mov, .mkv")
+
+    # 2. File Size Limit Check
+    # Note: Using seek to check size without reading entire file into memory immediately
+    try:
+        file.file.seek(0, os.SEEK_END)
+        file_size = file.file.tell()
+        file.file.seek(0)
+        
+        if file_size > MAX_FILE_SIZE:
+            logger.warning(f"File too large: {file_size} bytes")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Video file too large ({file_size/(1024*1024):.1f}MB). Maximum allowed is 20MB."
+            )
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Size validation error: {e}")
+
     filename = file.filename
     safe_filename = f"{job_id}_{filename}"
-    
     upload_path = str(UPLOADS_DIR / safe_filename)
     job_output_dir = str(OUTPUT_DIR / job_id)
     
-    # Auto-create folders
     os.makedirs(UPLOADS_DIR, exist_ok=True)
     os.makedirs(job_output_dir, exist_ok=True)
     
-    logger.info(f"Video Job {job_id}: Processing {filename}")
-
-    if not filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
-        shutil.rmtree(job_output_dir, ignore_errors=True)
-        raise HTTPException(status_code=400, detail="Invalid video format")
-
     try:
-        # 1. Safe Save
+        # 3. Safe Save
+        logger.info(f"Saving video to {upload_path}...")
         contents = await file.read()
         with open(upload_path, "wb") as f:
             f.write(contents)
             
-        # 2. Validation
         if not os.path.exists(upload_path):
-            raise HTTPException(status_code=500, detail="File failed to save")
+            raise RuntimeError("File failed to save to disk")
         
-        # 3. Process Video
-        results = process_video_pipeline(upload_path, job_id, job_output_dir, skip_frames=10)
+        # 4. Process Video with Skip Frames for Speed
+        logger.info(f"Processing video {job_id}...")
+        results = process_video_pipeline(upload_path, job_id, job_output_dir, skip_frames=30)
         
-        # Add metadata and schedule cleanup
+        # 5. Finalize Result
         results["job_id"] = job_id
         results["original_url"] = f"/uploads/{safe_filename}"
+        
+        # Schedule cleanup
         background_tasks.add_task(cleanup_job, upload_path, job_output_dir)
         
-        logger.info(f"Video Job {job_id} success")
+        logger.info(f"PROCESSING COMPLETED: Job {job_id}")
         return results
 
     except Exception as e:
-        logger.error(f"Video Job {job_id} failed: {e}")
+        logger.error(f"ERROR processing video job {job_id}: {str(e)}")
+        # Cleanup on failure
         if os.path.exists(upload_path): os.remove(upload_path)
         shutil.rmtree(job_output_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=f"Video processing failed: {str(e)}")
+        
+        # Always return a proper JSON error response
+        return {
+            "error": "Video processing failed or timed out",
+            "detail": str(e),
+            "job_id": job_id
+        }
     finally:
         await file.close()
-

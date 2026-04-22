@@ -14,8 +14,9 @@ logger = logging.getLogger(__name__)
 # Constants
 SCALE_FACTOR = 0.0005
 COST_PER_M2 = 100
-MAX_FRAMES = 5000  # Increased for full extraction
-SIMILARITY_THRESHOLD = 0.95
+MAX_PROCESSING_TIME = 90  # Seconds (Render timeout is ~100s)
+MAX_TOTAL_FRAMES = 100    # Hard limit on processed frames
+SIMILARITY_THRESHOLD = 0.90 # Lowered to skip more similar frames
 
 def compare_frames(gray1: np.ndarray, gray2: np.ndarray) -> float:
     """Compare two pre-processed frames for similarity using SSIM"""
@@ -43,10 +44,12 @@ def is_duplicate_pothole(new_det: Dict[str, Any], unique_potholes: List[Dict[str
             return True
     return False
 
-def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_frames: int = 10) -> Dict[str, Any]:
+def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_frames: int = 30) -> Dict[str, Any]:
     """
-    Main pipeline for video pothole detection (re-designed for job isolation).
+    Optimized pipeline for video pothole detection (Render compatible).
+    Processes every 'skip_frames' to reduce CPU load and prevent timeouts.
     """
+    start_time = time.time()
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError("Could not open video file")
@@ -56,40 +59,62 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     prev_gray = None
     sample_images = []
     
-    # Setup paths relative to backend root and job_id
+    # Setup paths
     backend_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     temp_base = os.path.join(backend_root, "temp", job_id)
     frame_dir = os.path.join(temp_base, "frames")
     
     os.makedirs(temp_base, exist_ok=True)
-    if os.path.exists(frame_dir):
-        shutil.rmtree(frame_dir)
     os.makedirs(frame_dir, exist_ok=True)
     
+    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    frame_idx = 0
     
+    logger.info(f"STARTING VIDEO JOB {job_id}: Total Frames: {total_video_frames}, FPS: {fps}")
+
+    frame_idx = 0
     while True:
+        # Check for timeout safety (Render limit)
+        elapsed = time.time() - start_time
+        if elapsed > MAX_PROCESSING_TIME:
+            logger.warning(f"Job {job_id} approaching timeout ({elapsed:.1f}s). Breaking early.")
+            break
+
+        if processed_count >= MAX_TOTAL_FRAMES:
+            logger.warning(f"Reached MAX_TOTAL_FRAMES limit ({MAX_TOTAL_FRAMES}). Stopping.")
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
 
-        if processed_count >= MAX_FRAMES:
-            logger.warning(f"Reached MAX_FRAMES limit ({MAX_FRAMES}). Stopping extraction.")
-            break
+        # SKIP FRAMES AGGRESSIVELY
+        if frame_idx % skip_frames != 0:
+            frame_idx += 1
+            continue
 
-        curr_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        curr_gray_resized = cv2.resize(curr_gray, (256, 256))
+        # RESIZE FRAME FOR SPEED
+        # Standardize to 640 width for detection
+        h, w = frame.shape[:2]
+        new_w = 640
+        new_h = int(h * (new_w / w))
+        frame_resized = cv2.resize(frame, (new_w, new_h))
+
+        # SIMILARITY CHECK
+        curr_gray = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
+        curr_gray_small = cv2.resize(curr_gray, (128, 128)) # Smaller for faster SSIM
 
         if prev_gray is not None:
-            similarity = compare_frames(prev_gray, curr_gray_resized)
+            similarity = compare_frames(prev_gray, curr_gray_small)
             if similarity > SIMILARITY_THRESHOLD:
                 frame_idx += 1
                 continue
 
-        _, buffer = cv2.imencode('.jpg', frame)
+        # DETECTION
+        _, buffer = cv2.imencode('.jpg', frame_resized)
         img_bytes = buffer.tobytes()
         
+        # Use imgsz=640 for faster inference on CPU
         raw_detections = detection.detect_potholes(img_bytes, imgsz=640, augment=False)
         
         frame_had_new_pothole = False
@@ -107,6 +132,7 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
                 unique_potholes.append(pothole_data)
                 frame_had_new_pothole = True
         
+        # ANNOTATION
         for det in raw_detections:
             det_area = area.calculate_area(det)
             det["severity"] = area.calculate_severity(det_area)
@@ -121,79 +147,71 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
             cv2.imwrite(sample_path, annotated_frame)
             sample_images.append(sample_path)
 
-        prev_gray = curr_gray_resized
+        prev_gray = curr_gray_small
         processed_count += 1
         frame_idx += 1
+        
+        if processed_count % 5 == 0:
+            logger.info(f"Job {job_id}: Processed {processed_count} frames... ({elapsed:.1f}s elapsed)")
 
     cap.release()
 
     # Video Generation (result.mp4)
     output_video_path = os.path.join(job_dir, "result.mp4")
     frames = sorted([f for f in os.listdir(frame_dir) if f.endswith(".jpg")])
-    video_writer = None
     
     if frames:
         first_frame = cv2.imread(os.path.join(frame_dir, frames[0]))
         if first_frame is not None:
             h, w, _ = first_frame.shape
-            # Standard H.264 codec (best for web)
             try:
                 fourcc = cv2.VideoWriter_fourcc(*'avc1')
-                video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
+                video_writer = cv2.VideoWriter(output_video_path, fourcc, 5.0, (w, h)) # Lower FPS for processed video
                 
                 if not video_writer.isOpened():
-                    logger.warning("avc1 codec failed, attempting fallback to mp4v")
                     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
-            except Exception as e:
-                logger.error(f"Error initializing VideoWriter: {e}")
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (w, h))
-
-            if video_writer and video_writer.isOpened():
+                    video_writer = cv2.VideoWriter(output_video_path, fourcc, 5.0, (w, h))
+                
                 for f_name in frames:
                     img = cv2.imread(os.path.join(frame_dir, f_name))
                     if img is not None:
                         video_writer.write(img)
                 video_writer.release()
-                logger.info(f"Video saved successfully to {output_video_path}")
-            else:
-                logger.error(f"Could not open or write to VideoWriter for {output_video_path}")
-        else:
-            logger.error(f"Could not read first frame to initialize VideoWriter")
-    else:
-        logger.warning(f"No frames were processed for job {job_id}, skipping video generation")
-
+            except Exception as e:
+                logger.error(f"Video writing error: {e}")
+    
     total_potholes = len(unique_potholes)
     total_cost = sum(p["cost"] for p in unique_potholes)
     severity_distribution = {"small": 0, "medium": 0, "large": 0}
     for p in unique_potholes:
         severity_distribution[p["severity"]] += 1
 
-    # PDF Report (saved in job_id folder as well)
-    # The pdf_service might need an update, but we'll use job_dir for now if possible
-    report_path = generate_pothole_report(
-        total_potholes=total_potholes,
-        total_cost=total_cost,
-        severity_distribution=severity_distribution,
-        detections=unique_potholes,
-        sample_images=sample_images
-    )
-    # Move report to job_dir if it was generated elsewhere
-    final_report_name = f"report_{job_id}.pdf"
-    final_report_path = os.path.join(job_dir, final_report_name)
-    if report_path and os.path.exists(report_path):
-        shutil.move(report_path, final_report_path)
+    # Report
+    try:
+        report_path = generate_pothole_report(
+            total_potholes=total_potholes,
+            total_cost=total_cost,
+            severity_distribution=severity_distribution,
+            detections=unique_potholes,
+            sample_images=sample_images
+        )
+        final_report_name = f"report_{job_id}.pdf"
+        final_report_path = os.path.join(job_dir, final_report_name)
+        if report_path and os.path.exists(report_path):
+            shutil.move(report_path, final_report_path)
+    except Exception as e:
+        logger.error(f"Report generation error: {e}")
+        final_report_name = ""
 
-    # Final cleanup of temp frames
     shutil.rmtree(temp_base, ignore_errors=True)
+    
+    logger.info(f"JOB COMPLETED {job_id}: {total_potholes} potholes found in {time.time()-start_time:.1f}s")
 
     return {
         "detections": unique_potholes,
         "total_potholes": total_potholes,
         "total_cost": round(total_cost, 2),
         "severity_distribution": severity_distribution,
-        "report_url": f"/output/{job_id}/{final_report_name}",
+        "report_url": f"/output/{job_id}/{final_report_name}" if final_report_name else "",
         "video_url": f"/output/{job_id}/result.mp4"
     }
-
