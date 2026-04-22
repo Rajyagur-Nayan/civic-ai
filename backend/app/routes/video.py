@@ -72,7 +72,7 @@ async def detect_video_endpoint(
         
         # 4. Process Video with Skip Frames for Speed
         logger.info(f"Processing video {job_id}...")
-        results = process_video_pipeline(upload_path, job_id, job_output_dir, skip_frames=30)
+        results = process_video_pipeline(upload_path, job_id, job_output_dir, skip_frames=5)
         
         # 5. Finalize Result
         results["job_id"] = job_id

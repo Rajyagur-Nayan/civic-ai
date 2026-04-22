@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 # Constants
 SCALE_FACTOR = 0.0005
 COST_PER_M2 = 100
-MAX_PROCESSING_TIME = 90  # Seconds (Render timeout is ~100s)
-MAX_TOTAL_FRAMES = 100    # Hard limit on processed frames
-SIMILARITY_THRESHOLD = 0.90 # Lowered to skip more similar frames
+MAX_PROCESSING_TIME = 85  # Seconds (Safe buffer before Render 100s timeout)
+MAX_TOTAL_FRAMES = 150    # Limit for Render stability
+SIMILARITY_THRESHOLD = 0.95
 
 def compare_frames(gray1: np.ndarray, gray2: np.ndarray) -> float:
     """Compare two pre-processed frames for similarity using SSIM"""
@@ -44,10 +44,10 @@ def is_duplicate_pothole(new_det: Dict[str, Any], unique_potholes: List[Dict[str
             return True
     return False
 
-def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_frames: int = 30) -> Dict[str, Any]:
+def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_frames: int = 5) -> Dict[str, Any]:
     """
-    Optimized pipeline for video pothole detection (Render compatible).
-    Processes every 'skip_frames' to reduce CPU load and prevent timeouts.
+    Stabilized video processing for Render. 
+    Uses mp4v codec and aggressive optimizations to prevent crashes.
     """
     start_time = time.time()
     cap = cv2.VideoCapture(video_path)
@@ -59,7 +59,7 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     prev_gray = None
     sample_images = []
     
-    # Setup paths
+    # Paths
     backend_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     temp_base = os.path.join(backend_root, "temp", job_id)
     frame_dir = os.path.join(temp_base, "frames")
@@ -67,42 +67,37 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     os.makedirs(temp_base, exist_ok=True)
     os.makedirs(frame_dir, exist_ok=True)
     
-    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    # Target dimensions
+    target_w, target_h = 640, 360
     
-    logger.info(f"STARTING VIDEO JOB {job_id}: Total Frames: {total_video_frames}, FPS: {fps}")
+    logger.info(f"STARTING STABILIZED VIDEO JOB {job_id}")
 
     frame_idx = 0
     while True:
-        # Check for timeout safety (Render limit)
+        # 1. Timeout Check
         elapsed = time.time() - start_time
         if elapsed > MAX_PROCESSING_TIME:
-            logger.warning(f"Job {job_id} approaching timeout ({elapsed:.1f}s). Breaking early.")
+            logger.warning(f"Timeout safety break at {elapsed:.1f}s. Returning partial results.")
             break
 
         if processed_count >= MAX_TOTAL_FRAMES:
-            logger.warning(f"Reached MAX_TOTAL_FRAMES limit ({MAX_TOTAL_FRAMES}). Stopping.")
             break
 
         ret, frame = cap.read()
         if not ret:
             break
 
-        # SKIP FRAMES AGGRESSIVELY
+        # 2. Frame Skipping (User requested 5)
         if frame_idx % skip_frames != 0:
             frame_idx += 1
             continue
 
-        # RESIZE FRAME FOR SPEED
-        # Standardize to 640 width for detection
-        h, w = frame.shape[:2]
-        new_w = 640
-        new_h = int(h * (new_w / w))
-        frame_resized = cv2.resize(frame, (new_w, new_h))
+        # 3. Resizing (User requested 640x360)
+        frame_resized = cv2.resize(frame, (target_w, target_h))
 
-        # SIMILARITY CHECK
+        # 4. Similarity Check
         curr_gray = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2GRAY)
-        curr_gray_small = cv2.resize(curr_gray, (128, 128)) # Smaller for faster SSIM
+        curr_gray_small = cv2.resize(curr_gray, (128, 128))
 
         if prev_gray is not None:
             similarity = compare_frames(prev_gray, curr_gray_small)
@@ -110,11 +105,11 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
                 frame_idx += 1
                 continue
 
-        # DETECTION
+        # 5. Detection
         _, buffer = cv2.imencode('.jpg', frame_resized)
         img_bytes = buffer.tobytes()
         
-        # Use imgsz=640 for faster inference on CPU
+        # CPU optimized inference
         raw_detections = detection.detect_potholes(img_bytes, imgsz=640, augment=False)
         
         frame_had_new_pothole = False
@@ -132,7 +127,7 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
                 unique_potholes.append(pothole_data)
                 frame_had_new_pothole = True
         
-        # ANNOTATION
+        # 6. Annotation and Save
         for det in raw_detections:
             det_area = area.calculate_area(det)
             det["severity"] = area.calculate_severity(det_area)
@@ -150,36 +145,34 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
         prev_gray = curr_gray_small
         processed_count += 1
         frame_idx += 1
-        
-        if processed_count % 5 == 0:
-            logger.info(f"Job {job_id}: Processed {processed_count} frames... ({elapsed:.1f}s elapsed)")
 
     cap.release()
 
-    # Video Generation (result.mp4)
+    # 7. Video Generation (Using 'mp4v' for Linux compatibility)
     output_video_path = os.path.join(job_dir, "result.mp4")
     frames = sorted([f for f in os.listdir(frame_dir) if f.endswith(".jpg")])
     
     if frames:
-        first_frame = cv2.imread(os.path.join(frame_dir, frames[0]))
-        if first_frame is not None:
-            h, w, _ = first_frame.shape
-            try:
-                fourcc = cv2.VideoWriter_fourcc(*'avc1')
-                video_writer = cv2.VideoWriter(output_video_path, fourcc, 5.0, (w, h)) # Lower FPS for processed video
-                
-                if not video_writer.isOpened():
-                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                    video_writer = cv2.VideoWriter(output_video_path, fourcc, 5.0, (w, h))
-                
-                for f_name in frames:
-                    img = cv2.imread(os.path.join(frame_dir, f_name))
-                    if img is not None:
-                        video_writer.write(img)
-                video_writer.release()
-            except Exception as e:
-                logger.error(f"Video writing error: {e}")
+        try:
+            # Use mp4v - highly compatible on Linux/Render
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            # User requested 15 FPS
+            video_writer = cv2.VideoWriter(output_video_path, fourcc, 15.0, (target_w, target_h))
+            
+            if not video_writer.isOpened():
+                raise RuntimeError("VideoWriter failed to initialize with mp4v codec")
+            
+            for f_name in frames:
+                img = cv2.imread(os.path.join(frame_dir, f_name))
+                if img is not None:
+                    video_writer.write(img)
+            video_writer.release()
+            logger.info(f"Video saved successfully to {output_video_path}")
+        except Exception as e:
+            logger.error(f"FATAL: VideoWriter error: {e}")
+            # Ensure partial results are still returned even if video generation fails
     
+    # 8. Results Aggregation
     total_potholes = len(unique_potholes)
     total_cost = sum(p["cost"] for p in unique_potholes)
     severity_distribution = {"small": 0, "medium": 0, "large": 0}
@@ -187,6 +180,7 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
         severity_distribution[p["severity"]] += 1
 
     # Report
+    final_report_name = ""
     try:
         report_path = generate_pothole_report(
             total_potholes=total_potholes,
@@ -200,12 +194,10 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
         if report_path and os.path.exists(report_path):
             shutil.move(report_path, final_report_path)
     except Exception as e:
-        logger.error(f"Report generation error: {e}")
-        final_report_name = ""
+        logger.error(f"Partial Failure: Report generation failed: {e}")
 
     shutil.rmtree(temp_base, ignore_errors=True)
-    
-    logger.info(f"JOB COMPLETED {job_id}: {total_potholes} potholes found in {time.time()-start_time:.1f}s")
+    logger.info(f"JOB DONE {job_id}: {total_potholes} potholes.")
 
     return {
         "detections": unique_potholes,
@@ -213,5 +205,5 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
         "total_cost": round(total_cost, 2),
         "severity_distribution": severity_distribution,
         "report_url": f"/output/{job_id}/{final_report_name}" if final_report_name else "",
-        "video_url": f"/output/{job_id}/result.mp4"
+        "video_url": f"/output/{job_id}/result.mp4" if os.path.exists(output_video_path) else ""
     }
