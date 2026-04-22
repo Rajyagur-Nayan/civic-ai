@@ -1,5 +1,7 @@
 fastapi==0.115.0
 uvicorn==0.32.0
+torch==2.5.1
+torchvision==0.20.1
 ultralytics==8.2.28
 opencv-python-headless==4.10.0.84
 numpy==1.26.4

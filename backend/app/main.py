@@ -22,7 +22,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 from pathlib import Path
 
 # Base directory (backend root)
@@ -30,10 +29,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Civ-AI Backend starting up... (YOLO model loaded globally)")
+    # Model is now lazy loaded, so we don't load it here to prevent startup crashes
+    logger.info("Civ-AI Backend starting up... (Model will be lazy-loaded on first request)")
     yield
     logger.info("Civ-AI Backend shutting down...")
-
 
 # Get version from .env (fallback to 1.0.0)
 BACKEND_VERSION = os.getenv("PYTHON_VERSION", "1.0.0")
@@ -74,12 +73,16 @@ OUTPUT_DIR = BASE_DIR / "output"
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
-
 @app.get("/")
 async def root():
     return {"message": "Civ-AI API - Road Infrastructure Intelligence"}
 
-
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Bind to port 10000 as required for Render, or use PORT env var
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, workers=1)
