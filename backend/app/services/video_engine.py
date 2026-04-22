@@ -89,10 +89,10 @@ def process_video_pipeline(video_path: str, job_id: str, job_dir: str, skip_fram
     try:
         while True:
             # A. Timeout Check
-            elapsed = time.time() - start_time
-            if elapsed > MAX_PROCESSING_TIME:
-                logger.warning(f"Timeout safety break at {elapsed:.1f}s. Finalizing partial results.")
-                break
+            # elapsed = time.time() - start_time
+            # if elapsed > MAX_PROCESSING_TIME:
+            #     logger.warning(f"Timeout safety break at {elapsed:.1f}s. Finalizing partial results.")
+            #     break
 
             ret, frame = cap.read()
             if not ret:
