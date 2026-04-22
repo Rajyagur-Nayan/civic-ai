@@ -16,8 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOADS_DIR = BASE_DIR / "uploads"
 OUTPUT_DIR = BASE_DIR / "output"
 
-# 100MB limit for better video support
-MAX_FILE_SIZE = 100 * 1024 * 1024 
+# 20MB limit for Render stability
+MAX_FILE_SIZE = 20 * 1024 * 1024 
 
 @router.post("", response_model=None)
 async def detect_video_endpoint(
@@ -70,9 +70,9 @@ async def detect_video_endpoint(
         if not os.path.exists(upload_path):
             raise RuntimeError("File failed to save to disk")
         
-        # 4. Process Video with higher density (skip 2 instead of 5 for thoroughness)
+        # 4. Process Video with Adaptive Density
         logger.info(f"Processing video {job_id}...")
-        results = process_video_pipeline(upload_path, job_id, job_output_dir, skip_frames=2)
+        results = process_video_pipeline(upload_path, job_id, job_output_dir)
         
         # 5. Finalize Result
         results["job_id"] = job_id

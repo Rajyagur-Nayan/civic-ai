@@ -48,25 +48,17 @@ def bytes_to_cv2(image_bytes: bytes) -> np.ndarray:
         raise ValueError("Invalid image format")
     return img
 
-def detect_potholes(
-    image_bytes: bytes, 
-    imgsz: int = 640, 
+def detect_potholes_frame(
+    img_cv2: np.ndarray, 
+    imgsz: int = 960, 
     augment: bool = False
 ) -> List[Dict[str, Any]]:
     """
-    Advanced detection pipeline with accuracy upgrades.
+    Core detection logic that works directly on a cv2 frame (numpy array).
     """
-    if not image_bytes:
-        return []
-
     try:
-        logger.info("Inference started...")
-        
         # Lazy load the model
         model = get_model()
-        
-        # Convert bytes to OpenCV image
-        img_cv2 = bytes_to_cv2(image_bytes)
         
         # PIL for YOLO inference (preferred by Ultralytics)
         img_pil = Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
@@ -84,7 +76,6 @@ def detect_potholes(
         
         detections = []
         if not results:
-            logger.info("Inference results count: 0")
             return []
 
         result = results[0]
@@ -107,19 +98,37 @@ def detect_potholes(
                 "confidence": round(conf, 3)
             })
 
-        logger.info(f"Inference results count: {len(detections)}")
         return detections
 
+    except Exception as e:
+        logger.error(f"Frame detection error: {e}")
+        raise RuntimeError(f"ML Processing Failed: {e}")
+
+def detect_potholes(
+    image_bytes: bytes, 
+    imgsz: int = 960, 
+    augment: bool = False
+) -> List[Dict[str, Any]]:
+    """
+    Legacy wrapper for image bytes.
+    """
+    if not image_bytes:
+        return []
+
+    try:
+        img_cv2 = bytes_to_cv2(image_bytes)
+        return detect_potholes_frame(img_cv2, imgsz, augment)
     except Exception as e:
         logger.error(f"Detection error: {e}")
         raise RuntimeError(f"ML Processing Failed: {e}")
 
-def draw_detections(image_bytes: bytes, detections: List[Dict[str, Any]]) -> np.ndarray:
+def draw_detections_frame(img: np.ndarray, detections: List[Dict[str, Any]]) -> np.ndarray:
     """
-    Draw bounding boxes with enriched labels.
+    Draw bounding boxes on a cv2 frame directly.
     """
-    img = bytes_to_cv2(image_bytes)
-    
+    # Create a copy to avoid modifying the original frame if needed, 
+    # but for performance in video engine we might want to modify in-place.
+    # Here we return a new one or modified one.
     for det in detections:
         x1, y1, x2, y2 = [int(v) for v in det["bbox"]]
         conf = det["confidence"]
@@ -138,6 +147,13 @@ def draw_detections(image_bytes: bytes, detections: List[Dict[str, Any]]) -> np.
         cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
         
     return img
+
+def draw_detections(image_bytes: bytes, detections: List[Dict[str, Any]]) -> np.ndarray:
+    """
+    Legacy wrapper for image bytes.
+    """
+    img = bytes_to_cv2(image_bytes)
+    return draw_detections_frame(img, detections)
 
 def reset_model():
     """Reset the singleton instance"""
