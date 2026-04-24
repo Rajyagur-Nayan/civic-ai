@@ -78,12 +78,12 @@ export const detectVideo = async (
   formData.append("file", file);
 
   console.log("Preparing request to detect video...");
-  console.log("API URL:", `${API_BASE_URL}/detect/video`);
+  console.log("API URL:", `${API_BASE_URL}/upload`);
 
   try {
     console.log("Sending request to backend...");
     const response = await axios.post<VideoDetectionResponse>(
-      `${API_BASE_URL}/detect/video`,
+      `${API_BASE_URL}/upload`,
       formData,
       {
         headers: {
