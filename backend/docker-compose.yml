@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  api:
+    build: .
+    ports:
+      - "8000:10000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RENDER=false
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+    depends_on:
+      - redis
+    restart: always
+
+  worker:
+    build: .
+    command: python worker.py
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RENDER=false
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+      - ./models:/app/models
+    depends_on:
+      - redis
+    restart: always

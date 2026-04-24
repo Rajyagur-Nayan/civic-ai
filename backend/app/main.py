@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import detect, video
+from app.routes import upload, status, result
 from fastapi.staticfiles import StaticFiles
 import os
 import mimetypes
@@ -52,8 +52,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(detect.router, prefix="/detect", tags=["Detection"])
-app.include_router(video.router, prefix="/detect/video", tags=["Video Detection"])
+app.include_router(upload.router, prefix="/upload", tags=["Async Upload"])
+app.include_router(status.router, prefix="/status", tags=["Job Status"])
+app.include_router(result.router, prefix="/result", tags=["Job Result"])
 
 # Initialize base infrastructure directories
 directories = [
