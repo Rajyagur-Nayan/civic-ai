@@ -17,7 +17,6 @@ if __name__ == "__main__":
         "app.main:app", 
         host=host, 
         port=port, 
-        reload=True, 
         reload_dirs=["app"], # Only watch 'app' folder, ignoring 'output'
         log_level="info"
     )
